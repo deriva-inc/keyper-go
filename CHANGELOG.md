@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.3.0] - 2026-03-10
+---
+#### Added
+- Add `main` and `router` files for the server.
+
 ### [0.2.0] - 2026-03-10
 ---
 #### Added
