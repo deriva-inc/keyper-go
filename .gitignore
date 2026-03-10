@@ -1,0 +1,68 @@
+# .gitignore for a Go project with Gin
+
+# Binaries for programs and plugins
+# These are generated from your source code
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# The compiled application binary
+# Often named after the project folder
+keyper-go
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+coverage.out
+
+# Dependency directories
+# These are managed by Go modules and should not be committed
+vendor/
+
+# Temporary directory for build artifacts (used by `air` and other tools)
+tmp/
+bin/
+dist/
+
+# Log files
+*.log
+log/
+logs/
+
+# Environment configuration files
+# These contain secrets and local machine settings
+.env
+.env.*
+! -f .env.example
+
+# Configuration files that should not be committed
+# For example, a local override for config.yml
+config/config.local.yml
+
+### IDE/Editor-specific files ###
+# VSCode
+.vscode/
+
+# GoLand/IntelliJ
+.idea/
+
+# Vim
+*~
+*.swp
+
+### OS-specific files ###
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
