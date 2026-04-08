@@ -1,0 +1,15 @@
+# Server configuration
+http:
+  port: "8080"
+  mode: "debug" # gin mode: debug, release, or test
+
+# Database configuration
+# IMPORTANT: Update this with your actual local database credentials.
+db:
+  dsn: "DSN_PLACEHOLDER_FROM_ENV"
+
+# Security configuration
+# IMPORTANT: Change this to a long, random, and secret string!
+# This is used as a global secret for hashing operations.
+security:
+  pepper: "PEPPER_PLACEHOLDER_FROM_ENV"

@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.4.0] - 2026-04-09
+---
+#### Added
+- Add configuration support using [viper](https://github.com/spf13/viper) for loading server config.
+
 ### [0.3.0] - 2026-03-10
 ---
 #### Added
