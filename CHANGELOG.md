@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.7.0] - 2026-04-09
+---
+#### Added
+- Initialize gin server to serve backend REST APIs.
+
 ### [0.6.0] - 2026-04-09
 ---
 #### Added
