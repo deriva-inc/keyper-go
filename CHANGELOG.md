@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.6.0] - 2026-04-09
+---
+#### Added
+- Add Database utility file to connect with a remote PostgreSQL DB instance.
+
 ### [0.5.0] - 2026-04-09
 ---
 #### Added
