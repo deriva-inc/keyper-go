@@ -1,55 +1,58 @@
 package router
 
 import (
+	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/handlers"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/gin-gonic/gin"
 )
 
-// TODO: Placeholder for an auth middleware we will create later
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// For now, we'll just let all requests pass.
-		// Later, this will check for a valid JWT.
-		c.Next()
-	}
-}
-
-func SetupRoutes(r *gin.Engine) {
+func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 	v1 := r.Group("/api/v1")
 	{
-		// --- Authentication ---
+		// SECTION: Authentication
 		auth := v1.Group("/auth")
 		{
-			// The handler functions (e.g., handlers.Register) will be created in the handlers files
-			// auth.GET("/register", handlers.Register)
-			// auth.POST("/login", handlers.Login)
 			auth.GET("/users", func(c *gin.Context) {
 				c.JSON(200, gin.H{"status": "UP"})
 			})
+
 		}
 
-		// --- Authenticated Routes ---
+		// SECTION: Authenticated Routes
 		authRequired := v1.Group("/")
-		authRequired.Use(AuthMiddleware())
+		authRequired.Use(middleware.AuthRequired())
 		{
-			// --- User & Profiles ---
-			// authRequired.GET("/me", handlers.GetMe)
-			// authRequired.GET("/profiles", handlers.GetProfiles)
+			// SECTION: Users API Endpoints
+			users := v1.Group("/users")
+			users.GET("/me", handlers.GetUserProfile(dbIns))
+			users.POST("/", handlers.PostUserProfile(dbIns))
+			users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
+			// !SECTION: Users API Endpoints
+
+			// SECTION: Profiles
+			authRequired.GET("/profiles", handlers.GetProfiles(dbIns))
 			// authRequired.POST("/profiles", handlers.CreateProfile)
 			// authRequired.PUT("/profiles/:profileId", handlers.UpdateProfile)
 			// authRequired.DELETE("/profiles/:profileId", handlers.DeleteProfile)
+			// !SECTION: Profiles
 
-			// --- Groups ---
-			// authRequired.GET("/profiles/:profileId/groups", handlers.GetGroups)
+			// SECTION: Groups
+			authRequired.GET("/profiles/:profileId/groups", handlers.GetGroupsInProfile(dbIns))
 			// authRequired.POST("/profiles/:profileId/groups", handlers.CreateGroup)
 			// authRequired.PUT("/groups/:groupId", handlers.UpdateGroup)
 			// authRequired.DELETE("/groups/:groupId", handlers.DeleteGroup)
+			// !SECTION: Groups
 
-			// --- Vault Entries ---
-			// authRequired.GET("/entries", handlers.GetEntries)
-			// authRequired.POST("/entries", handlers.CreateEntry)
-			// authRequired.GET("/entries/:entryId", handlers.GetEntry)
+			// SECTION: Vault Entries
+			authRequired.GET("/entries", handlers.GetEntries(dbIns))
+			authRequired.POST("/entries", handlers.CreateEntry(dbIns))
+			authRequired.GET("/entries/:entryId", handlers.GetEntry(dbIns))
 			// authRequired.PUT("/entries/:entryId", handlers.UpdateEntry)
 			// authRequired.DELETE("/entries/:entryId", handlers.DeleteEntry)
+			// !SECTION: Vault Entries
 		}
+		// !SECTION: Authenticated Routes
+		// !SECTION: Authentication
 	}
 }

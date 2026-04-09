@@ -10,6 +10,7 @@ import (
 	"github.com/deriva-inc/keyper-go/db"
 	"github.com/deriva-inc/keyper-go/router"
 	"github.com/deriva-inc/keyper-go/utils/logger"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	// -- Migration Imports --
@@ -75,6 +76,15 @@ func main() {
 	// STEP 4: Initialize Gin Engine
 	gin.SetMode(cfg.HTTP.Mode) // Use gin.DebugMode for development
 	engine := gin.Default()    // gin.Default() comes with Logger and Recovery middleware
+
+	// Add CORS middleware
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "x-user-id"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	// STEP 5: Setup Routes
 	router.SetupRoutes(engine, database)
