@@ -1,4 +1,19 @@
 # CHANGELOG
+### [0.10.0] - 2026-04-10
+---
+#### Added
+- Add DB models for type safety.
+
+### [0.9.0] - 2026-04-09
+---
+#### Added
+- Add Users' service API endpoints.
+
+### [0.8.0] - 2026-04-09
+---
+#### Added
+- Add DB migrations on server start-up.
+
 ### [0.7.0] - 2026-04-09
 ---
 #### Added
