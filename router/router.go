@@ -31,10 +31,12 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// !SECTION: Users API Endpoints
 
 			// SECTION: Profiles
-			authRequired.GET("/profiles", handlers.GetProfiles(dbIns))
-			// authRequired.POST("/profiles", handlers.CreateProfile)
-			// authRequired.PUT("/profiles/:profileId", handlers.UpdateProfile)
-			// authRequired.DELETE("/profiles/:profileId", handlers.DeleteProfile)
+			profiles := v1.Group("/profiles")
+			profiles.GET("/", handlers.GetProfiles(dbIns))
+			profiles.GET("/:profileId", handlers.GetProfile(dbIns))
+			profiles.POST("/", handlers.CreateProfile(dbIns))
+			profiles.PATCH("/:profileId", handlers.UpdateProfile(dbIns))
+			profiles.DELETE("/:profileId", handlers.DeleteProfile(dbIns))
 			// !SECTION: Profiles
 
 			// SECTION: Groups

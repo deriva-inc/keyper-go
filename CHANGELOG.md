@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.11.0] - 2026-04-10
+---
+#### Added
+- Add Profiles' service API endpoints.
+
 ### [0.10.0] - 2026-04-10
 ---
 #### Added

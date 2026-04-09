@@ -11,7 +11,7 @@ import (
 // GET [/api/v1/users/me] - retrieves the details of the currently logged-in user.
 func GetUserProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("x-user-id")
+		userID := c.GetHeader("X-User-Id")
 		if userID == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
 			return
