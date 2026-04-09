@@ -40,18 +40,18 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// !SECTION: Profiles
 
 			// SECTION: Groups
-			authRequired.GET("/profiles/:profileId/groups", handlers.GetGroupsInProfile(dbIns))
-			// authRequired.POST("/profiles/:profileId/groups", handlers.CreateGroup)
-			// authRequired.PUT("/groups/:groupId", handlers.UpdateGroup)
-			// authRequired.DELETE("/groups/:groupId", handlers.DeleteGroup)
+			groups := v1.Group("/groups")
+			groups.GET("/", handlers.GetAllGroupsInProfile(dbIns))
+			groups.GET("/:groupId", handlers.GetGroup(dbIns))
+			groups.POST("/", handlers.CreateGroup(dbIns))
+			groups.PATCH("/:groupId", handlers.UpdateGroup(dbIns))
+			groups.DELETE("/:groupId", handlers.DeleteGroup(dbIns))
+
 			// !SECTION: Groups
 
 			// SECTION: Vault Entries
-			authRequired.GET("/entries", handlers.GetEntries(dbIns))
-			authRequired.POST("/entries", handlers.CreateEntry(dbIns))
-			authRequired.GET("/entries/:entryId", handlers.GetEntry(dbIns))
-			// authRequired.PUT("/entries/:entryId", handlers.UpdateEntry)
-			// authRequired.DELETE("/entries/:entryId", handlers.DeleteEntry)
+			// vaultEntries := v1.Group("/entries")
+
 			// !SECTION: Vault Entries
 		}
 		// !SECTION: Authenticated Routes
