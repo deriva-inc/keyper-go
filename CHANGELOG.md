@@ -1,4 +1,14 @@
 # CHANGELOG
+### [0.13.0] - 2026-04-10
+---
+#### Added
+- Add Vault Entries' service API endpoints.
+
+### [0.12.0] - 2026-04-10
+---
+#### Added
+- Add Groups' service API endpoints
+
 ### [0.11.0] - 2026-04-10
 ---
 #### Added
