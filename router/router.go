@@ -12,9 +12,8 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		// SECTION: Authentication
 		auth := v1.Group("/auth")
 		{
-			auth.GET("/users", func(c *gin.Context) {
-				c.JSON(200, gin.H{"status": "UP"})
-			})
+			auth.POST("/signup", handlers.RegisterUser(dbIns))
+			auth.POST("/login", handlers.Login)
 		}
 
 		// SECTION: Authenticated Routes
@@ -24,8 +23,6 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// SECTION: Users API Endpoints
 			users := v1.Group("/users")
 			{
-				users.POST("", handlers.PostUserProfile(dbIns))
-
 				users.GET("/me", handlers.GetUserProfile(dbIns))
 				users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
 			}

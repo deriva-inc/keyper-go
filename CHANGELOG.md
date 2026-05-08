@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.14.0] - 2026-05-08
+---
+#### Added
+- Add API endpoint for the user sign up.
+
 ### [0.13.0] - 2026-04-10
 ---
 #### Added

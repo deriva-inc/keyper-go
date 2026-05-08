@@ -29,38 +29,6 @@ func GetUserProfile(database *db.DB) gin.HandlerFunc {
 	}
 }
 
-// POST [/api/v1/users] - creates a new user profile.
-func PostUserProfile(database *db.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var input struct {
-			Email        string  `json:"email" binding:"required,email"`
-			DisplayName  *string `json:"displayName"`
-			AvatarURL    *string `json:"avatarUrl"`
-			AuthHash     string  `json:"authHash"`
-			Salt         string  `json:"salt"`
-			RecoveryHash *string `json:"recoveryHash"`
-		}
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-			return
-		}
-
-		var newUser models.User
-		query := `
-            INSERT INTO users (email, display_name, avatar_url, auth_hash, salt, recovery_hash, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-            RETURNING id, email, display_name, avatar_url, created_at, updated_at`
-
-		err := database.Get(&newUser, query, input.Email, input.DisplayName, input.AvatarURL, input.AuthHash, input.Salt, input.RecoveryHash)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusCreated, newUser)
-	}
-}
-
 // PATCH [/api/v1/users/:id] - updates user profile details.
 func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -71,9 +39,9 @@ func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
 		}
 
 		var input struct {
-			Email       *string `json:"email" binding:"omitempty,email"`
-			DisplayName *string `json:"displayName"`
-			AvatarURL   *string `json:"avatarUrl"`
+			Email     *string `json:"email" binding:"omitempty,email"`
+			Name      *string `json:"name"`
+			AvatarURL *string `json:"avatarUrl"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -92,7 +60,7 @@ func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
             WHERE id = $4
             RETURNING id, email, display_name, avatar_url, created_at, updated_at`
 
-		err := database.Get(&updatedUser, query, input.Email, input.DisplayName, input.AvatarURL, userID)
+		err := database.Get(&updatedUser, query, input.Email, input.Name, input.AvatarURL, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user: " + err.Error()})
 			return
