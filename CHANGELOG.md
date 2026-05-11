@@ -1,4 +1,10 @@
 # CHANGELOG
+### [0.17.0] - 2026-05-11
+---
+#### Added
+- Add user login functionality.
+- Add fetching environment variable support to the application.
+
 ### [0.16.0] - 2026-05-11
 ---
 #### Added

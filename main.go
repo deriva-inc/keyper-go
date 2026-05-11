@@ -12,6 +12,7 @@ import (
 	"github.com/deriva-inc/keyper-go/utils/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 
 	// -- Migration Imports --
 	"github.com/golang-migrate/migrate/v4"
@@ -23,7 +24,12 @@ import (
 var migrationsFS embed.FS
 
 func main() {
-	// For now, we will hardcode the port.
+	// STEP 0: Load environment variables from .env file (if it exists)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	// In the next step, we would load this from config/config.go
 	// STEP 1: Load Configuration
 	logger := logger.New()
