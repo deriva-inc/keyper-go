@@ -13,7 +13,7 @@ type User struct {
 	AuthHash     string    `db:"auth_hash" json:"authHash"`
 	Salt         string    `db:"salt" json:"salt"`
 	RecoveryHash *string   `db:"recovery_hash" json:"recoveryHash,omitempty"`
-	Name         *string   `db:"display_name" json:"name,omitempty"`
+	Name         *string   `db:"name" json:"name,omitempty"`
 	AvatarURL    *string   `db:"avatar_url" json:"avatarUrl,omitempty"`
 	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`

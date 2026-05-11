@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.15.0] - 2026-05-08
+---
+#### Updated
+- Rename users table column `display_name` to `name`.
+
 ### [0.14.0] - 2026-05-08
 ---
 #### Added

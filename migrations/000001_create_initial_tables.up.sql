@@ -9,7 +9,7 @@ CREATE TABLE users (
     auth_hash TEXT NOT NULL,
     salt TEXT NOT NULL,
     recovery_hash TEXT,
-    display_name TEXT,
+    name TEXT,
     avatar_url TEXT,
 
     -- Timestamps for creation and last update.
