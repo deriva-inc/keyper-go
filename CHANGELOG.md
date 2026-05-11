@@ -1,5 +1,10 @@
 # CHANGELOG
-### [0.15.0] - 2026-05-08
+### [0.16.0] - 2026-05-11
+---
+#### Added
+- Add fetch user salt functionality.
+
+### [0.15.0] - 2026-05-11
 ---
 #### Updated
 - Rename users table column `display_name` to `name`.

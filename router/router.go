@@ -13,7 +13,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/signup", handlers.RegisterUser(dbIns))
-			auth.POST("/login", handlers.Login)
+			auth.POST("/login", handlers.Login(dbIns))
 		}
 
 		// SECTION: Authenticated Routes
@@ -23,6 +23,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// SECTION: Users API Endpoints
 			users := v1.Group("/users")
 			{
+				users.GET("/salt", handlers.GetUserSalt(dbIns))
 				users.GET("/me", handlers.GetUserProfile(dbIns))
 				users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
 			}

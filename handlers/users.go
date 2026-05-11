@@ -8,6 +8,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GET [/api/v1/users/salt] - retrieves the salt for a given user's email.
+func GetUserSalt(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		email := c.Query("email")
+		if email == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Email query parameter is required"})
+			return
+		}
+
+		var salt string
+		err := database.Get(&salt, "SELECT salt FROM users WHERE email = $1", email)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Salt retrieved successfully",
+			"data": gin.H{
+				"salt": salt,
+			},
+		})
+	}
+}
+
 // GET [/api/v1/users/me] - retrieves the details of the currently logged-in user.
 func GetUserProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -18,7 +43,7 @@ func GetUserProfile(database *db.DB) gin.HandlerFunc {
 		}
 
 		var user models.User
-		query := "SELECT id, email, display_name, avatar_url, created_at, updated_at FROM users WHERE id = $1"
+		query := "SELECT id, email, name, avatar_url, created_at, updated_at FROM users WHERE id = $1"
 		err := database.Get(&user, query, userID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -54,11 +79,11 @@ func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
             UPDATE users 
             SET 
                 email = COALESCE($1, email), 
-                display_name = COALESCE($2, display_name), 
+                name = COALESCE($2, name), 
                 avatar_url = COALESCE($3, avatar_url),
                 updated_at = NOW()
             WHERE id = $4
-            RETURNING id, email, display_name, avatar_url, created_at, updated_at`
+            RETURNING id, email, name, avatar_url, created_at, updated_at`
 
 		err := database.Get(&updatedUser, query, input.Email, input.Name, input.AvatarURL, userID)
 		if err != nil {
