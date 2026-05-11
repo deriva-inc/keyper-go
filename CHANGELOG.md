@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.18.0] - 2026-05-11
+---
+#### Added
+- Add auth middleware for checking JWT validation on each protected API route.
+
 ### [0.17.0] - 2026-05-11
 ---
 #### Added

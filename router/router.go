@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/deriva-inc/keyper-go/db"
 	"github.com/deriva-inc/keyper-go/handlers"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,22 +16,25 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			auth.POST("/signup", handlers.RegisterUser(dbIns))
 			auth.POST("/login", handlers.Login(dbIns))
 		}
+		users := v1.Group("/users")
+		{
+			users.GET("/salt", handlers.GetUserSalt(dbIns))
+		}
 
 		// SECTION: Authenticated Routes
-		// authRequired := v1.Group("/")
-		// authRequired.Use(middleware.AuthRequired())
+		authRequired := v1.Group("/")
+		authRequired.Use(middleware.AuthRequired())
 		{
 			// SECTION: Users API Endpoints
 			users := v1.Group("/users")
 			{
-				users.GET("/salt", handlers.GetUserSalt(dbIns))
 				users.GET("/me", handlers.GetUserProfile(dbIns))
 				users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
 			}
 			// !SECTION: Users API Endpoints
 
 			// SECTION: Profiles
-			profiles := v1.Group("/profiles")
+			profiles := authRequired.Group("/profiles")
 			{
 				profiles.GET("", handlers.GetProfiles(dbIns))
 				profiles.POST("", handlers.CreateProfile(dbIns))
