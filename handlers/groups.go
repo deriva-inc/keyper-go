@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
 	"github.com/gin-gonic/gin"
 )
@@ -11,13 +12,13 @@ import (
 // GET [/api/v1/groups] - retrieves all groups within a specific profile for the logged-in user.
 func GetAllGroupsInProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.GetHeader("X-Profile-Id")
-
-		if userID == "" || profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Id / X-Profile-Id headers are required"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+
+		profileId := c.Query("profileId")
 
 		var groups []models.Group
 		query := `
@@ -26,8 +27,9 @@ func GetAllGroupsInProfile(database *db.DB) gin.HandlerFunc {
 			WHERE g.profile_id = $1 AND p.user_id = $2
 			ORDER BY g.name ASC`
 
-		err := database.Select(&groups, query, profileID, userID)
-		if err != nil {
+		groupsErr := database.Select(&groups, query, profileId, userId)
+		if groupsErr != nil {
+			print("Error retrieving groups: ", groupsErr.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve groups"})
 			return
 		}
@@ -35,15 +37,24 @@ func GetAllGroupsInProfile(database *db.DB) gin.HandlerFunc {
 		if groups == nil {
 			groups = []models.Group{}
 		}
-		c.JSON(http.StatusOK, groups)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Groups retrieved successfully",
+			"data":    groups,
+		})
 	}
 }
 
 // GET [/api/v1/groups/:groupId] - retrieves a single group's details if it belongs to the user's profile.
 func GetGroup(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		groupID := c.Param("groupId")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		groupId := c.Param("groupId")
+		// profileId := c.Query("profileId")
 
 		var group models.Group
 		query := `
@@ -51,72 +62,79 @@ func GetGroup(database *db.DB) gin.HandlerFunc {
 			JOIN profiles p ON g.profile_id = p.id
 			WHERE g.id = $1 AND p.user_id = $2`
 
-		err := database.Get(&group, query, groupID, userID)
-		if err != nil {
+		groupErr := database.Get(&group, query, groupId, userId)
+		if groupErr != nil {
+			print("Error retrieving group: ", groupErr.Error())
 			c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, group)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Group retrieved successfully",
+			"data":    group,
+		})
 	}
 }
 
 // POST [/api/v1/groups] - creates a new group under a specific profile for the user.
 func CreateGroup(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.GetHeader("X-Profile-Id")
-
-		if userID == "" || profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Id / X-Profile-Id headers are required"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		var input struct {
-			Name string  `json:"name" binding:"required"`
-			Icon *string `json:"icon"`
+		var CreateGroupInput struct {
+			Name        string  `json:"name" binding:"required"`
+			Description *string `json:"description"`
+			Type        string  `json:"type" binding:"required,oneof=provider category"`
+			ProfileId   string  `json:"profileId" binding:"required"`
+			Icon        *string `json:"icon"`
 		}
 
-		if err := c.ShouldBindJSON(&input); err != nil {
+		if jsonBindErr := c.ShouldBindJSON(&CreateGroupInput); jsonBindErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 			return
 		}
 
 		// Verify profile belongs to user
 		var count int
-		err := database.Get(&count, "SELECT COUNT(*) FROM profiles WHERE id = $1 AND user_id = $2", profileID, userID)
-		if err != nil || count == 0 {
+		getProfileErr := database.Get(&count, "SELECT COUNT(*) FROM profiles WHERE id = $1 AND user_id = $2", CreateGroupInput.ProfileId, userId)
+		if getProfileErr != nil || count == 0 {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Invalid profile or access denied"})
 			return
 		}
 
 		var newGroup models.Group
 		query := `
-			INSERT INTO groups (profile_id, name, icon, created_at, updated_at)
-			VALUES ($1, $2, $3, NOW(), NOW())
+			INSERT INTO groups (profile_id, name, description, type, icon, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 			RETURNING *`
 
-		err = database.Get(&newGroup, query, profileID, input.Name, input.Icon)
-		if err != nil {
+		createNewGroupErr := database.Get(&newGroup, query, CreateGroupInput.ProfileId, CreateGroupInput.Name, CreateGroupInput.Description, CreateGroupInput.Type, CreateGroupInput.Icon)
+		if createNewGroupErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
 			return
 		}
 
-		c.JSON(http.StatusCreated, newGroup)
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Group created successfully",
+			"data":    newGroup,
+		})
 	}
 }
 
 // PATCH [/api/v1/groups/:groupId] - updates an existing group's details.
 func UpdateGroup(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.GetHeader("X-Profile-Id")
-		groupID := c.Param("groupId")
-
-		if userID == "" || profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Id / X-Profile-Id headers are required"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
 			return
 		}
+
+		groupID := c.Param("groupId")
 
 		var input struct {
 			Name *string `json:"name"`
@@ -125,14 +143,6 @@ func UpdateGroup(database *db.DB) gin.HandlerFunc {
 
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-			return
-		}
-
-		// Verify profile belongs to user
-		var count int
-		profileAccessErr := database.Get(&count, "SELECT COUNT(*) FROM profiles WHERE id = $1 AND user_id = $2", profileID, userID)
-		if profileAccessErr != nil || count == 0 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Invalid profile or access denied"})
 			return
 		}
 
@@ -147,20 +157,27 @@ func UpdateGroup(database *db.DB) gin.HandlerFunc {
 			WHERE g.id = $3 AND g.profile_id = p.id AND p.user_id = $4
 			RETURNING g.*`
 
-		err := database.Get(&updatedGroup, query, input.Name, input.Icon, groupID, userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group: " + err.Error()})
+		updateGroupErr := database.Get(&updatedGroup, query, input.Name, input.Icon, groupID, userId)
+		if updateGroupErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group: " + updateGroupErr.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, updatedGroup)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Group updated successfully",
+			"data":    updatedGroup,
+		})
 	}
 }
 
 // DELETE [/api/v1/groups/:groupId] - removes a group if it belongs to the user.
 func DeleteGroup(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
 		groupID := c.Param("groupId")
 
 		query := `
@@ -168,7 +185,7 @@ func DeleteGroup(database *db.DB) gin.HandlerFunc {
 			USING profiles p
 			WHERE g.id = $1 AND g.profile_id = p.id AND p.user_id = $2`
 
-		result, err := database.Exec(query, groupID, userID)
+		result, err := database.Exec(query, groupID, userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group"})
 			return
@@ -180,6 +197,6 @@ func DeleteGroup(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully", "data": true})
 	}
 }
