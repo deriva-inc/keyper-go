@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.20.0] - 2026-05-13
+---
+#### Updated
+- Update Groups table schema.
+
 ### [0.19.0] - 2026-05-13
 ---
 #### Updated

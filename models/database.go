@@ -36,6 +36,7 @@ type Group struct {
 	ProfileID   uuid.UUID `db:"profile_id" json:"profileId"`
 	Name        string    `db:"name" json:"name"`
 	Description *string   `db:"description" json:"description,omitempty"`
+	Type        string    `db:"type" json:"type"`
 	Icon        *string   `db:"icon" json:"icon,omitempty"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
