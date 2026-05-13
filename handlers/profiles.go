@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
 	"github.com/gin-gonic/gin"
 )
@@ -11,15 +12,15 @@ import (
 // GET [/api/v1/profiles] - retrieves all profiles for the logged-in user.
 func GetProfiles(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		var profiles []models.Profile
-		err := database.Select(&profiles, "SELECT * FROM profiles WHERE user_id=$1 ORDER BY name ASC", userID)
-		if err != nil {
+		dbErr := database.Select(&profiles, "SELECT * FROM profiles WHERE user_id=$1 ORDER BY name ASC", userId)
+		if dbErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve profiles"})
 			return
 		}
@@ -27,48 +28,54 @@ func GetProfiles(database *db.DB) gin.HandlerFunc {
 		if profiles == nil {
 			profiles = []models.Profile{} // Return empty list instead of null
 		}
-		c.JSON(http.StatusOK, profiles)
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Profiles retrieved successfully",
+			"data":    profiles,
+		})
 	}
 }
 
 // GET [/api/v1/profiles/:profileId] - retrieves a single profile by ID for the logged-in user.
 func GetProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.Param("profileId")
-
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+		profileID := c.Param("profileId")
 		if profileID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
 			return
 		}
-
 		var profile models.Profile
-		err := database.Get(&profile, "SELECT * FROM profiles WHERE id=$1 AND user_id=$2", profileID, userID)
-		if err != nil {
+		dbErr := database.Get(&profile, "SELECT * FROM profiles WHERE id=$1 AND user_id=$2", profileID, userId)
+		if dbErr != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, profile)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Profile retrieved successfully",
+			"data":    profile,
+		})
 	}
 }
 
 // POST [/api/v1/profiles] - creates a new profile for the logged-in user.
 func CreateProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
 		var input struct {
-			Name string  `json:"name" binding:"required"`
-			Icon *string `json:"icon"`
+			Name        string  `json:"name" binding:"required"`
+			Description *string `json:"description"`
+			Icon        *string `json:"icon"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -78,38 +85,41 @@ func CreateProfile(database *db.DB) gin.HandlerFunc {
 
 		var newProfile models.Profile
 		query := `
-			INSERT INTO profiles (user_id, name, icon, created_at, updated_at)
-			VALUES ($1, $2, $3, NOW(), NOW())
-			RETURNING id, user_id, name, icon, created_at, updated_at`
+			INSERT INTO profiles (user_id, name, description, icon, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, NOW(), NOW())
+			RETURNING id, user_id, name, description, icon, created_at, updated_at`
 
-		err := database.Get(&newProfile, query, userID, input.Name, input.Icon)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create profile: " + err.Error()})
+		dbErr := database.Get(&newProfile, query, userId, input.Name, input.Description, input.Icon)
+		if dbErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create profile: " + dbErr.Error()})
 			return
 		}
 
-		c.JSON(http.StatusCreated, newProfile)
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Profile created successfully",
+			"data":    newProfile,
+		})
 	}
 }
 
 // PATCH [/api/v1/profiles/:profileId] - updates an existing profile for the logged-in user.
 func UpdateProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.Param("profileId")
-
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+		profileID := c.Param("profileId")
 		if profileID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
 			return
 		}
 
 		var input struct {
-			Name *string `json:"name"`
-			Icon *string `json:"icon"`
+			Name        *string `json:"name"`
+			Description *string `json:"description"`
+			Icon        *string `json:"icon"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -127,43 +137,44 @@ func UpdateProfile(database *db.DB) gin.HandlerFunc {
 			WHERE id = $3 AND user_id = $4
 			RETURNING id, user_id, name, icon, created_at, updated_at`
 
-		err := database.Get(&updatedProfile, query, input.Name, input.Icon, profileID, userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile: " + err.Error()})
+		dbErr := database.Get(&updatedProfile, query, input.Name, input.Icon, profileID, userId)
+		if dbErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile: " + dbErr.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, updatedProfile)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Profile updated successfully",
+			"data":    updatedProfile,
+		})
 	}
 }
 
 // DELETE [/api/v1/profiles/:profileId] - deletes a profile for the logged-in user.
 func DeleteProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.Param("profileId")
-
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
-			return
-		}
-		if profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
-			return
-		}
-
-		result, err := database.Exec("DELETE FROM profiles WHERE id=$1 AND user_id=$2", profileID, userID)
+		userId, err := middleware.GetUserIDFromContext(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete profile: " + err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
+		profileID := c.Param("profileId")
+		if profileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required", "data": false})
+			return
+		}
+		result, dbErr := database.Exec("DELETE FROM profiles WHERE id=$1 AND user_id=$2", profileID, userId)
+		if dbErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete profile: " + dbErr.Error(), "data": false})
 			return
 		}
 
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found", "data": false})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully", "data": true})
 	}
 }
