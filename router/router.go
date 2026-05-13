@@ -46,7 +46,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// !SECTION: Profiles
 
 			// SECTION: Groups
-			groups := v1.Group("/groups")
+			groups := authRequired.Group("/groups")
 			{
 				groups.GET("", handlers.GetAllGroupsInProfile(dbIns))
 				groups.POST("", handlers.CreateGroup(dbIns))
@@ -59,7 +59,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			// !SECTION: Groups
 
 			// SECTION: Vault Entries
-			vaultEntries := v1.Group("/entries")
+			vaultEntries := authRequired.Group("/entries")
 			{
 				vaultEntries.GET("", handlers.GetEntries(dbIns))
 				vaultEntries.POST("", handlers.CreateEntry(dbIns))

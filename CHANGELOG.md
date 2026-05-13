@@ -1,4 +1,10 @@
 # CHANGELOG
+### [0.18.1] - 2026-05-11
+---
+#### Updated
+- Fix DB schema.
+- Increase JWT validity to 24 hours.
+
 ### [0.18.0] - 2026-05-11
 ---
 #### Added

@@ -21,25 +21,24 @@ type User struct {
 
 // Profile corresponds to the 'profiles' table
 type Profile struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	UserID       uuid.UUID `db:"user_id" json:"userId"`
-	Name         string    `db:"name" json:"name"`
-	AuthHash     string    `db:"auth_hash" json:"authHash"`
-	Salt         string    `db:"salt" json:"salt"`
-	RecoveryHash *string   `db:"recovery_hash" json:"recoveryHash,omitempty"`
-	Icon         *string   `db:"icon" json:"icon,omitempty"`
-	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`
+	ID          uuid.UUID `db:"id" json:"id"`
+	UserID      uuid.UUID `db:"user_id" json:"userId"`
+	Name        string    `db:"name" json:"name"`
+	Description *string   `db:"description" json:"description,omitempty"`
+	Icon        *string   `db:"icon" json:"icon,omitempty"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 // Group corresponds to the 'groups' table
 type Group struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	ProfileID uuid.UUID `db:"profile_id" json:"profileId"`
-	Name      string    `db:"name" json:"name"`
-	Icon      *string   `db:"icon" json:"icon,omitempty"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+	ID          uuid.UUID `db:"id" json:"id"`
+	ProfileID   uuid.UUID `db:"profile_id" json:"profileId"`
+	Name        string    `db:"name" json:"name"`
+	Description *string   `db:"description" json:"description,omitempty"`
+	Icon        *string   `db:"icon" json:"icon,omitempty"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 // VaultEntry corresponds to the 'vault_entries' table

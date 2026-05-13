@@ -45,6 +45,7 @@ CREATE TABLE profiles (
 
     -- An optional text field for an icon url/name.
     icon TEXT,
+    description TEXT,
 
     -- Timestamps for creation and last update.
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

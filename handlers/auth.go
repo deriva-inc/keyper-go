@@ -202,7 +202,7 @@ func Login(database *db.DB) gin.HandlerFunc {
 		}
 
 		// Generate JWT for the session.
-		accessToken, jwtErr := GenerateJWT(existingUser.ID, 60*time.Minute)
+		accessToken, jwtErr := GenerateJWT(existingUser.ID, 24*time.Hour)
 		if jwtErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token: " + jwtErr.Error()})
 			return

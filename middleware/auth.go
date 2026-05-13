@@ -64,7 +64,7 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		// 5. Check if the token is valid and claims are extracted.
-		if !token.Valid || claims == nil {
+		if !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
