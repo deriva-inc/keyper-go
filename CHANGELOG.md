@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.20.0] - 2026-05-14
+---
+#### Updated
+- Update Users table schema.
+
 ### [0.21.0] - 2026-05-13
 ---
 #### Updated
