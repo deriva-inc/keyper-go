@@ -17,8 +17,12 @@ func GetUserSalt(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		var salt string
-		err := database.Get(&salt, "SELECT salt FROM users WHERE email = $1", email)
+		var UserSalts struct {
+			AuthSalt       string `db:"auth_salt"`
+			EncryptionSalt string `db:"encryption_salt"`
+		}
+
+		err := database.Get(&UserSalts, "SELECT auth_salt, encryption_salt FROM users WHERE email = $1", email)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
@@ -27,7 +31,8 @@ func GetUserSalt(database *db.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Salt retrieved successfully",
 			"data": gin.H{
-				"salt": salt,
+				"authSalt":       UserSalts.AuthSalt,
+				"encryptionSalt": UserSalts.EncryptionSalt,
 			},
 		})
 	}

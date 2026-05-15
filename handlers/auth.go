@@ -19,16 +19,18 @@ import (
 )
 
 type RegisterUserReq struct {
-	Email     string `json:"email" binding:"required,email"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatarUrl"`
-	AuthHash  string `json:"authHash"`
-	Salt      string `json:"salt"`
+	Email          string `json:"email" binding:"required,email"`
+	Name           string `json:"name" binding:"required"`
+	AvatarURL      string `json:"avatarUrl" binding:"required,url"`
+	AuthSalt       string `json:"authSalt" binding:"required"`
+	AuthKey        string `json:"authKey" binding:"required"`
+	EncryptionKey  string `json:"encryptionKey" binding:"required"`
+	EncryptionSalt string `json:"encryptionSalt" binding:"required"`
 }
 
 type LoginUserReq struct {
-	Email    string `json:"email" binding:"required,email"`
-	AuthHash string `json:"authHash"`
+	Email   string `json:"email" binding:"required,email"`
+	AuthKey string `json:"authKey" binding:"required"`
 }
 
 type JWTClaims struct {
@@ -121,10 +123,19 @@ func RegisterUser(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Hashing the AuthHash once again on the server for more security.
-		clientAuthHash := input.AuthHash
+		// Hashing the AuthKey once again on the server for more security.
+		clientAuthKey := input.AuthKey
 
-		hashedAuthHashForDB, err := bcrypt.GenerateFromPassword([]byte(clientAuthHash), bcrypt.DefaultCost)
+		hashedAuthKeyForDB, err := bcrypt.GenerateFromPassword([]byte(clientAuthKey), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure user credentials"})
+			return
+		}
+
+		// Hashing the AuthKey once again on the server for more security.
+		encryptionKeyHash := input.EncryptionKey
+
+		hashedEncryptionKeyForDB, err := bcrypt.GenerateFromPassword([]byte(encryptionKeyHash), bcrypt.DefaultCost)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure user credentials"})
 			return
@@ -148,11 +159,11 @@ func RegisterUser(database *db.DB) gin.HandlerFunc {
 		var newUser models.User
 
 		query := `
-            INSERT INTO users (email, name, avatar_url, auth_hash, salt, recovery_hash, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            INSERT INTO users (email, name, avatar_url, auth_key, auth_salt, encryption_key, encryption_salt, recovery_hash, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
             RETURNING id, email, name, avatar_url, created_at, updated_at`
 
-		createUserInDBErr := database.Get(&newUser, query, input.Email, input.Name, input.AvatarURL, string(hashedAuthHashForDB), input.Salt, recoveryHash)
+		createUserInDBErr := database.Get(&newUser, query, input.Email, input.Name, input.AvatarURL, string(hashedAuthKeyForDB), input.AuthSalt, string(hashedEncryptionKeyForDB), input.EncryptionSalt, recoveryHash)
 		if createUserInDBErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + createUserInDBErr.Error()})
 			return
@@ -195,7 +206,7 @@ func Login(database *db.DB) gin.HandlerFunc {
 		}
 
 		// Compare hashes, one sent by the client and one stored in the database.
-		err := bcrypt.CompareHashAndPassword([]byte(existingUser.AuthHash), []byte(input.AuthHash))
+		err := bcrypt.CompareHashAndPassword([]byte(existingUser.AuthKey), []byte(input.AuthKey))
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return

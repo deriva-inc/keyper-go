@@ -10,11 +10,11 @@ import (
 type User struct {
 	ID             uuid.UUID `db:"id" json:"id"`
 	Email          string    `db:"email" json:"email"`
-	AuthHash       string    `db:"auth_hash" json:"authHash"`
+	AuthKey        string    `db:"auth_key" json:"authKey"`
 	AuthSalt       string    `db:"auth_salt" json:"authSalt"`
-	EncryptionHash string    `db:"encryption_hash" json:"encryptionHash"`
+	EncryptionKey  string    `db:"encryption_key" json:"encryptionKey"`
 	EncryptionSalt string    `db:"encryption_salt" json:"encryptionSalt"`
-	RecoveryHash   *string   `db:"recovery_hash" json:"recoveryHash,omitempty"`
+	RecoveryKey    *string   `db:"recovery_hash" json:"recoveryKey,omitempty"`
 	Name           *string   `db:"name" json:"name,omitempty"`
 	AvatarURL      *string   `db:"avatar_url" json:"avatarUrl,omitempty"`
 	CreatedAt      time.Time `db:"created_at" json:"createdAt"`

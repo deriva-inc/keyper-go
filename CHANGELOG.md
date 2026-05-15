@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.21.0] - 2026-05-14
+---
+#### Updated
+- Update User Signup process to handle EncryptionSalt and EncryptionKey for vault entry security.
+
 ### [0.20.0] - 2026-05-14
 ---
 #### Updated
