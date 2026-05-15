@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.23.0] - 2026-05-16
+---
+#### Updated
+- Update Vault Entry services API endpoints to work with Authentication middleware.
+
 ### [0.22.0] - 2026-05-15
 ---
 #### Updated

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -13,9 +14,11 @@ import (
 
 // VaultEntryInput defines the structure for creating/updating a vault entry.
 type VaultEntryInput struct {
-	GroupID       *uuid.UUID      `json:"groupId"`
-	Type          string          `json:"type" binding:"required"`
 	Name          string          `json:"name" binding:"required"`
+	Description   *string         `json:"description"`
+	GroupID       string          `json:"groupId"`
+	Type          string          `json:"type" binding:"required"`
+	Icon          *string         `json:"icon"`
 	EncryptedBlob string          `json:"encryptedBlob" binding:"required"` // Received as Base64 string from frontend
 	CustomFields  json.RawMessage `json:"customFields"`                     // Handle as raw JSON
 	IsFavorite    bool            `json:"isFavorite"`
@@ -24,11 +27,16 @@ type VaultEntryInput struct {
 // POST [/api/v1/entries] - saves a new vault entry to the database.
 func CreateEntry(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.GetHeader("X-Profile-Id")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
 
-		if userID == "" || profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Id / X-Profile-Id headers are required"})
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required"})
 			return
 		}
 
@@ -40,8 +48,8 @@ func CreateEntry(database *db.DB) gin.HandlerFunc {
 
 		// Security check: ensure profile belongs to user
 		var count int
-		err := database.Get(&count, "SELECT COUNT(*) FROM profiles WHERE id = $1 AND user_id = $2", profileID, userID)
-		if err != nil || count == 0 {
+		profileCheckErr := database.Get(&count, "SELECT COUNT(*) FROM profiles WHERE id = $1 AND user_id = $2", profileId, userId)
+		if profileCheckErr != nil || count == 0 {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Invalid profile or access denied"})
 			return
 		}
@@ -55,11 +63,22 @@ func CreateEntry(database *db.DB) gin.HandlerFunc {
 
 		var newEntry models.VaultEntry
 		query := `
-			INSERT INTO vault_entries (profile_id, group_id, type, name, encrypted_blob, custom_fields, is_favorite, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+			INSERT INTO vault_entries (profile_id, group_id, type, name, description, icon, encrypted_blob, custom_fields, is_favorite, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
 			RETURNING *`
 
-		err = database.Get(&newEntry, query, profileID, input.GroupID, input.Type, input.Name, encryptedBytes, input.CustomFields, input.IsFavorite)
+		// Convert empty string GroupID to nil for the database
+		var groupID *uuid.UUID
+		if input.GroupID != "" {
+			parsedID, err := uuid.Parse(input.GroupID)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid GroupID format"})
+				return
+			}
+			groupID = &parsedID
+		}
+
+		err = database.Get(&newEntry, query, profileId, groupID, input.Type, input.Name, input.Description, input.Icon, encryptedBytes, input.CustomFields, input.IsFavorite)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create vault entry: " + err.Error()})
 			return
@@ -72,11 +91,16 @@ func CreateEntry(database *db.DB) gin.HandlerFunc {
 // GET [/api/v1/entries] - retrieves all entries for a specific profile.
 func GetEntries(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		profileID := c.GetHeader("X-Profile-Id")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
 
-		if userID == "" || profileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Id and X-Profile-Id headers are required"})
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required"})
 			return
 		}
 
@@ -87,8 +111,8 @@ func GetEntries(database *db.DB) gin.HandlerFunc {
 			WHERE e.profile_id = $1 AND p.user_id = $2
 			ORDER BY e.name ASC`
 
-		err := database.Select(&entries, query, profileID, userID)
-		if err != nil {
+		entriesErr := database.Select(&entries, query, profileId, userId)
+		if entriesErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve entries"})
 			return
 		}
@@ -96,7 +120,7 @@ func GetEntries(database *db.DB) gin.HandlerFunc {
 		if entries == nil {
 			entries = []models.VaultEntry{}
 		}
-		c.JSON(http.StatusOK, entries)
+		c.JSON(http.StatusOK, gin.H{"message": "Entries retrieved successfully", "data": entries})
 	}
 }
 
@@ -180,7 +204,19 @@ func UpdateEntry(database *db.DB) gin.HandlerFunc {
 // DELETE [/api/v1/entries/:entryId] - removes a vault entry.
 func DeleteEntry(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
+
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required", "data": false})
+			return
+		}
+
 		entryID := c.Param("entryId")
 
 		query := `
@@ -188,18 +224,18 @@ func DeleteEntry(database *db.DB) gin.HandlerFunc {
 			USING profiles p
 			WHERE e.id = $1 AND e.profile_id = p.id AND p.user_id = $2`
 
-		result, err := database.Exec(query, entryID, userID)
+		result, err := database.Exec(query, entryID, userId)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete entry"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete entry", "data": false})
 			return
 		}
 
 		rows, _ := result.RowsAffected()
 		if rows == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Entry not found or access denied"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Entry not found or access denied", "data": false})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Entry deleted successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Entry deleted successfully", "data": true})
 	}
 }
