@@ -110,6 +110,7 @@ func UpdateProfile(database *db.DB) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+
 		profileID := c.Param("profileId")
 		if profileID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
@@ -131,13 +132,14 @@ func UpdateProfile(database *db.DB) gin.HandlerFunc {
 		query := `
 			UPDATE profiles 
 			SET 
-				name = COALESCE($1, name), 
-				icon = COALESCE($2, icon),
+				name = COALESCE($1, name),
+				description = COALESCE($2, description),
+				icon = COALESCE($3, icon),
 				updated_at = NOW()
-			WHERE id = $3 AND user_id = $4
-			RETURNING id, user_id, name, icon, created_at, updated_at`
+			WHERE id = $4 AND user_id = $5
+			RETURNING id, user_id, name, description, icon, created_at, updated_at`
 
-		dbErr := database.Get(&updatedProfile, query, input.Name, input.Icon, profileID, userId)
+		dbErr := database.Get(&updatedProfile, query, input.Name, input.Description, input.Icon, profileID, userId)
 		if dbErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile: " + dbErr.Error()})
 			return

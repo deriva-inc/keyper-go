@@ -1,6 +1,11 @@
 # CHANGELOG
 ### [0.22.0] - 2026-05-15
 ---
+#### Updated
+- Update [PATCH] profile API service to update an existing user profile.
+
+### [0.22.0] - 2026-05-15
+---
 #### Added
 - Add Get User Details and Delete User functionality.
 
