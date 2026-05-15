@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
 	"github.com/gin-gonic/gin"
 )
@@ -38,33 +39,36 @@ func GetUserSalt(database *db.DB) gin.HandlerFunc {
 	}
 }
 
-// GET [/api/v1/users/me] - retrieves the details of the currently logged-in user.
+// GET [/api/v1/users] - retrieves the details of the currently logged-in user.
 func GetUserProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID missing from headers"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
 		var user models.User
 		query := "SELECT id, email, name, avatar_url, created_at, updated_at FROM users WHERE id = $1"
-		err := database.Get(&user, query, userID)
+		err = database.Get(&user, query, userId)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, user)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "User profile retrieved successfully",
+			"data":    user,
+		})
 	}
 }
 
 // PATCH [/api/v1/users/:id] - updates user profile details.
 func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.Param("userId")
-		if userID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -90,12 +94,37 @@ func UpdateUserProfile(database *db.DB) gin.HandlerFunc {
             WHERE id = $4
             RETURNING id, email, name, avatar_url, created_at, updated_at`
 
-		err := database.Get(&updatedUser, query, input.Email, input.Name, input.AvatarURL, userID)
+		err = database.Get(&updatedUser, query, input.Email, input.Name, input.AvatarURL, userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user: " + err.Error()})
 			return
 		}
 
 		c.JSON(http.StatusOK, updatedUser)
+	}
+}
+
+// DELETE [/api/v1/users] - deletes a user profile.
+func DeleteUserProfile(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		result, deleteUserErr := database.Exec("DELETE FROM users WHERE id = $1", userId)
+		if deleteUserErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete profile: " + deleteUserErr.Error(), "data": false})
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found", "data": false})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully", "data": true})
 	}
 }

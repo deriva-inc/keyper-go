@@ -26,9 +26,10 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		authRequired.Use(middleware.AuthRequired())
 		{
 			// SECTION: Users API Endpoints
-			users := v1.Group("/users")
+			users := authRequired.Group("/users")
 			{
-				users.GET("/me", handlers.GetUserProfile(dbIns))
+				users.GET("/", handlers.GetUserProfile(dbIns))
+				users.DELETE("/", handlers.DeleteUserProfile(dbIns))
 				users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
 			}
 			// !SECTION: Users API Endpoints

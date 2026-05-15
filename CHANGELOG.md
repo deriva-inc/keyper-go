@@ -1,5 +1,10 @@
 # CHANGELOG
-### [0.21.0] - 2026-05-14
+### [0.22.0] - 2026-05-15
+---
+#### Added
+- Add Get User Details and Delete User functionality.
+
+### [0.21.0] - 2026-05-15
 ---
 #### Updated
 - Update User Signup process to handle EncryptionSalt and EncryptionKey for vault entry security.

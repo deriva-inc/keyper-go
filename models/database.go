@@ -51,6 +51,8 @@ type VaultEntry struct {
 	GroupID       *uuid.UUID `db:"group_id" json:"groupId"`
 	Type          string     `db:"type" json:"type"`
 	Name          string     `db:"name" json:"name"`
+	Description   *string    `db:"description" json:"description,omitempty"`
+	Icon          *string    `db:"icon" json:"icon,omitempty"`
 	EncryptedBlob []byte     `db:"encrypted_blob" json:"encryptedBlob"`
 	CustomFields  *string    `db:"custom_fields" json:"customFields,omitempty"`
 	IsFavorite    bool       `db:"is_favorite" json:"isFavorite"`
