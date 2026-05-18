@@ -57,12 +57,14 @@ type VaultEntry struct {
 	EncryptedBlob  []byte     `db:"encrypted_blob" json:"encryptedBlob"`
 	CustomFields   *string    `db:"custom_fields" json:"customFields,omitempty"`
 	WebsiteURL     *string    `db:"website_url" json:"websiteUrl,omitempty"`
+	Email          *string    `db:"email" json:"email,omitempty" binding:"required"`
 	UserID         *string    `db:"user_id" json:"userId,omitempty"`
 	UserName       *string    `db:"user_name" json:"userName,omitempty"`
 	CardNumber     *string    `db:"card_number" json:"cardNumber,omitempty"`
 	ExpirationDate *string    `db:"expiration_date" json:"expirationDate,omitempty"`
 	SecurityCode   *string    `db:"security_code" json:"securityCode,omitempty"`
 	IsFavorite     bool       `db:"is_favorite" json:"isFavorite"`
+	IsArchived     bool       `db:"is_archived" json:"isArchived"`
 	CreatedAt      time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updatedAt"`
 }

@@ -183,3 +183,75 @@ func DeleteProfile(database *db.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully", "data": true})
 	}
 }
+
+// GET [/api/v1/profiles/:profileId/groups/count] - retrieves the count of groups in a profile for the logged-in user.
+func GetGroupCount(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		profileID := c.Param("profileId")
+		if profileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
+			return
+		}
+
+		var count int
+
+		query := `
+			SELECT COUNT(*) 
+			FROM groups g
+			JOIN profiles p ON g.profile_id = p.id
+			WHERE g.profile_id = $1 AND p.user_id = $2`
+
+		err = database.Get(&count, query, profileID, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve group count: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Group count retrieved successfully",
+			"data":    count,
+		})
+	}
+}
+
+// GET [/api/v1/profiles/:profileId/entries/count] - retrieves the count of entries in a profile for the logged-in user.
+func GetEntryCount(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		profileID := c.Param("profileId")
+		if profileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
+			return
+		}
+
+		var count int
+
+		query := `
+			SELECT COUNT(*) 
+			FROM vault_entries ve
+			JOIN profiles p ON ve.profile_id = p.id
+			WHERE ve.profile_id = $1 AND p.user_id = $2`
+
+		err = database.Get(&count, query, profileID, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve entry count: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Entry count retrieved successfully",
+			"data":    count,
+		})
+	}
+}

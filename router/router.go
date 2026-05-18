@@ -43,6 +43,9 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				profiles.GET("/:profileId", handlers.GetProfile(dbIns))
 				profiles.PATCH("/:profileId", handlers.UpdateProfile(dbIns))
 				profiles.DELETE("/:profileId", handlers.DeleteProfile(dbIns))
+
+				profiles.GET("/:profileId/groups/count", handlers.GetGroupCount(dbIns))
+				profiles.GET("/:profileId/entries/count", handlers.GetEntryCount(dbIns))
 			}
 			// !SECTION: Profiles
 
