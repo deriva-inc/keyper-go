@@ -76,6 +76,7 @@ func CreateProfile(database *db.DB) gin.HandlerFunc {
 			Name        string  `json:"name" binding:"required"`
 			Description *string `json:"description"`
 			Icon        *string `json:"icon"`
+			IsArchived  *bool   `json:"isArchived"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -85,11 +86,11 @@ func CreateProfile(database *db.DB) gin.HandlerFunc {
 
 		var newProfile models.Profile
 		query := `
-			INSERT INTO profiles (user_id, name, description, icon, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, NOW(), NOW())
-			RETURNING id, user_id, name, description, icon, created_at, updated_at`
+			INSERT INTO profiles (user_id, name, description, icon, is_archived, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			RETURNING id, user_id, name, description, icon, is_archived, created_at, updated_at`
 
-		dbErr := database.Get(&newProfile, query, userId, input.Name, input.Description, input.Icon)
+		dbErr := database.Get(&newProfile, query, userId, input.Name, input.Description, input.Icon, input.IsArchived)
 		if dbErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create profile: " + dbErr.Error()})
 			return
@@ -121,6 +122,7 @@ func UpdateProfile(database *db.DB) gin.HandlerFunc {
 			Name        *string `json:"name"`
 			Description *string `json:"description"`
 			Icon        *string `json:"icon"`
+			IsArchived  *bool   `json:"isArchived"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -135,11 +137,12 @@ func UpdateProfile(database *db.DB) gin.HandlerFunc {
 				name = COALESCE($1, name),
 				description = COALESCE($2, description),
 				icon = COALESCE($3, icon),
+				is_archived = COALESCE($4, is_archived),
 				updated_at = NOW()
-			WHERE id = $4 AND user_id = $5
-			RETURNING id, user_id, name, description, icon, created_at, updated_at`
+			WHERE id = $5 AND user_id = $6
+			RETURNING id, user_id, name, description, icon, is_archived, created_at, updated_at`
 
-		dbErr := database.Get(&updatedProfile, query, input.Name, input.Description, input.Icon, profileID, userId)
+		dbErr := database.Get(&updatedProfile, query, input.Name, input.Description, input.Icon, input.IsArchived, profileID, userId)
 		if dbErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile: " + dbErr.Error()})
 			return

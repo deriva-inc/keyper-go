@@ -28,6 +28,7 @@ type Profile struct {
 	Name        string    `db:"name" json:"name"`
 	Description *string   `db:"description" json:"description,omitempty"`
 	Icon        *string   `db:"icon" json:"icon,omitempty"`
+	IsArchived  bool      `db:"is_archived" json:"isArchived"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
@@ -46,16 +47,22 @@ type Group struct {
 
 // VaultEntry corresponds to the 'vault_entries' table
 type VaultEntry struct {
-	ID            uuid.UUID  `db:"id" json:"id"`
-	ProfileID     uuid.UUID  `db:"profile_id" json:"profileId"`
-	GroupID       *uuid.UUID `db:"group_id" json:"groupId"`
-	Type          string     `db:"type" json:"type"`
-	Name          string     `db:"name" json:"name"`
-	Description   *string    `db:"description" json:"description,omitempty"`
-	Icon          *string    `db:"icon" json:"icon,omitempty"`
-	EncryptedBlob []byte     `db:"encrypted_blob" json:"encryptedBlob"`
-	CustomFields  *string    `db:"custom_fields" json:"customFields,omitempty"`
-	IsFavorite    bool       `db:"is_favorite" json:"isFavorite"`
-	CreatedAt     time.Time  `db:"created_at" json:"createdAt"`
-	UpdatedAt     time.Time  `db:"updated_at" json:"updatedAt"`
+	ID             uuid.UUID  `db:"id" json:"id"`
+	ProfileID      uuid.UUID  `db:"profile_id" json:"profileId"`
+	GroupID        *uuid.UUID `db:"group_id" json:"groupId"`
+	Type           string     `db:"type" json:"type"`
+	Name           string     `db:"name" json:"name"`
+	Description    *string    `db:"description" json:"description,omitempty"`
+	Icon           *string    `db:"icon" json:"icon,omitempty"`
+	EncryptedBlob  []byte     `db:"encrypted_blob" json:"encryptedBlob"`
+	CustomFields   *string    `db:"custom_fields" json:"customFields,omitempty"`
+	WebsiteURL     *string    `db:"website_url" json:"websiteUrl,omitempty"`
+	UserID         *string    `db:"user_id" json:"userId,omitempty"`
+	UserName       *string    `db:"user_name" json:"userName,omitempty"`
+	CardNumber     *string    `db:"card_number" json:"cardNumber,omitempty"`
+	ExpirationDate *string    `db:"expiration_date" json:"expirationDate,omitempty"`
+	SecurityCode   *string    `db:"security_code" json:"securityCode,omitempty"`
+	IsFavorite     bool       `db:"is_favorite" json:"isFavorite"`
+	CreatedAt      time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updatedAt"`
 }
