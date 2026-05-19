@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.29.0] - 2026-05-19
+---
+#### Updated
+- Update PATCH group API endpoint with correct JSON inputs.
+
 ### [0.28.0] - 2026-05-19
 ---
 #### Added

@@ -156,13 +156,17 @@ func UpdateGroup(database *db.DB) gin.HandlerFunc {
 			UPDATE groups g
 			SET 
 				name = COALESCE($1, g.name),
-				icon = COALESCE($2, g.icon),
+				description = COALESCE($2, g.description),
+				type = COALESCE($3, g.type),
+				profile_id = COALESCE($4, g.profile_id),
+				icon = COALESCE($5, g.icon),
+				is_archived = COALESCE($6, g.is_archived),
 				updated_at = NOW()
 			FROM profiles p
-			WHERE g.id = $3 AND g.profile_id = p.id AND p.user_id = $4
+			WHERE g.id = $7 AND g.profile_id = p.id AND p.user_id = $8
 			RETURNING g.*`
 
-		updateGroupErr := database.Get(&updatedGroup, query, input.Name, input.Icon, groupID, userId)
+		updateGroupErr := database.Get(&updatedGroup, query, input.Name, input.Description, input.Type, input.ProfileId, input.Icon, input.IsArchived, groupID, userId)
 		if updateGroupErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group: " + updateGroupErr.Error()})
 			return
