@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.28.0] - 2026-05-19
+---
+#### Added
+- Add "Archive" support on Groups.
+
 ### [0.27.0] - 2026-05-19
 ---
 #### Added

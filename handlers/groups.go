@@ -91,6 +91,7 @@ func CreateGroup(database *db.DB) gin.HandlerFunc {
 			Type        string  `json:"type" binding:"required,oneof=provider category"`
 			ProfileId   string  `json:"profileId" binding:"required"`
 			Icon        *string `json:"icon"`
+			IsArchived  *bool   `json:"isArchived"`
 		}
 
 		if jsonBindErr := c.ShouldBindJSON(&CreateGroupInput); jsonBindErr != nil {
@@ -108,11 +109,11 @@ func CreateGroup(database *db.DB) gin.HandlerFunc {
 
 		var newGroup models.Group
 		query := `
-			INSERT INTO groups (profile_id, name, description, type, icon, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			INSERT INTO groups (profile_id, name, description, type, icon, is_archived, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 			RETURNING *`
 
-		createNewGroupErr := database.Get(&newGroup, query, CreateGroupInput.ProfileId, CreateGroupInput.Name, CreateGroupInput.Description, CreateGroupInput.Type, CreateGroupInput.Icon)
+		createNewGroupErr := database.Get(&newGroup, query, CreateGroupInput.ProfileId, CreateGroupInput.Name, CreateGroupInput.Description, CreateGroupInput.Type, CreateGroupInput.Icon, CreateGroupInput.IsArchived)
 		if createNewGroupErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
 			return
@@ -137,8 +138,12 @@ func UpdateGroup(database *db.DB) gin.HandlerFunc {
 		groupID := c.Param("groupId")
 
 		var input struct {
-			Name *string `json:"name"`
-			Icon *string `json:"icon"`
+			Name        *string `json:"name"`
+			Description *string `json:"description"`
+			Type        *string `json:"type" binding:"omitempty,oneof=provider category"`
+			ProfileId   *string `json:"profileId"`
+			Icon        *string `json:"icon"`
+			IsArchived  *bool   `json:"isArchived"`
 		}
 
 		if err := c.ShouldBindJSON(&input); err != nil {

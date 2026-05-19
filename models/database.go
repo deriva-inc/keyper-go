@@ -41,6 +41,7 @@ type Group struct {
 	Description *string   `db:"description" json:"description,omitempty"`
 	Type        string    `db:"type" json:"type"`
 	Icon        *string   `db:"icon" json:"icon,omitempty"`
+	IsArchived  bool      `db:"is_archived" json:"isArchived"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
