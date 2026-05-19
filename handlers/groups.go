@@ -200,3 +200,30 @@ func DeleteGroup(database *db.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully", "data": true})
 	}
 }
+
+// GET [/api/v1/groups/:groupId/entries/count] - retrieves the count of vault entries within a specific group.
+func GetGroupEntryCount(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
+
+		groupId := c.Param("groupId")
+		var count int
+		query := `
+			SELECT COUNT(*) from vault_entries ve
+			JOIN groups g on ve.group_id = g.id
+			JOIN profiles p on g.profile_id = p.id
+			WHERE g.id = $1 AND p.user_id = $2`
+
+		err = database.Get(&count, query, groupId, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve entry count", "data": false})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Entry count retrieved successfully", "data": count})
+	}
+}

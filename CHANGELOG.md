@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.27.0] - 2026-05-19
+---
+#### Added
+- Add vault entries count API endpoint on Groups services.
+
 ### [0.26.0] - 2026-05-19
 ---
 #### Added
