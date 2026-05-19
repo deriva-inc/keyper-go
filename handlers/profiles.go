@@ -184,8 +184,90 @@ func DeleteProfile(database *db.DB) gin.HandlerFunc {
 	}
 }
 
+// GET [/api/v1/profiles/:profileId/groups] - retrieves all groups in a profile for the logged-in user.
+func GetProfileGroups(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		profileID := c.Param("profileId")
+		if profileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
+			return
+		}
+
+		var groups []models.Group
+
+		query := `
+			SELECT g.* 
+			FROM groups g
+			JOIN profiles p ON g.profile_id = p.id
+			WHERE g.profile_id = $1 AND p.user_id = $2
+			ORDER BY g.name ASC`
+
+		err = database.Select(&groups, query, profileID, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups: " + err.Error()})
+			return
+		}
+
+		if groups == nil {
+			groups = []models.Group{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Groups retrieved successfully",
+			"data":    groups,
+		})
+	}
+}
+
+// GET [/api/v1/profiles/:profileId/entries] - retrieves all entries in a profile for the logged-in user.
+func GetProfileEntries(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		profileID := c.Param("profileId")
+		if profileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Profile ID is required"})
+			return
+		}
+
+		var entries []models.VaultEntry
+
+		query := `
+			SELECT ve.* 
+			FROM vault_entries ve
+			JOIN profiles p ON ve.profile_id = p.id
+			WHERE ve.profile_id = $1 AND p.user_id = $2
+			ORDER BY ve.name ASC`
+
+		err = database.Select(&entries, query, profileID, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve entries: " + err.Error()})
+			return
+		}
+
+		if entries == nil {
+			entries = []models.VaultEntry{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Entries retrieved successfully",
+			"data":    entries,
+		})
+	}
+}
+
 // GET [/api/v1/profiles/:profileId/groups/count] - retrieves the count of groups in a profile for the logged-in user.
-func GetGroupCount(database *db.DB) gin.HandlerFunc {
+func GetProfileGroupCount(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId, err := middleware.GetUserIDFromContext(c)
 		if err != nil {
@@ -221,7 +303,7 @@ func GetGroupCount(database *db.DB) gin.HandlerFunc {
 }
 
 // GET [/api/v1/profiles/:profileId/entries/count] - retrieves the count of entries in a profile for the logged-in user.
-func GetEntryCount(database *db.DB) gin.HandlerFunc {
+func GetProfileEntryCount(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId, err := middleware.GetUserIDFromContext(c)
 		if err != nil {

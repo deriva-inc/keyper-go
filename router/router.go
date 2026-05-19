@@ -44,8 +44,10 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				profiles.PATCH("/:profileId", handlers.UpdateProfile(dbIns))
 				profiles.DELETE("/:profileId", handlers.DeleteProfile(dbIns))
 
-				profiles.GET("/:profileId/groups/count", handlers.GetGroupCount(dbIns))
-				profiles.GET("/:profileId/entries/count", handlers.GetEntryCount(dbIns))
+				profiles.GET("/:profileId/groups", handlers.GetProfileGroups(dbIns))
+				profiles.GET("/:profileId/entries", handlers.GetProfileEntries(dbIns))
+				profiles.GET("/:profileId/groups/count", handlers.GetProfileGroupCount(dbIns))
+				profiles.GET("/:profileId/entries/count", handlers.GetProfileEntryCount(dbIns))
 			}
 			// !SECTION: Profiles
 
@@ -58,6 +60,8 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				groups.GET("/:groupId", handlers.GetGroup(dbIns))
 				groups.PATCH("/:groupId", handlers.UpdateGroup(dbIns))
 				groups.DELETE("/:groupId", handlers.DeleteGroup(dbIns))
+
+				groups.GET("/:groupId/entries/count", handlers.GetGroupEntryCount(dbIns))
 			}
 
 			// !SECTION: Groups

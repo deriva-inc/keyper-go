@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.26.0] - 2026-05-19
+---
+#### Added
+- Add groups and vault entries API endpoint on Profiles services to fetch profile specific data.
+
 ### [0.25.0] - 2026-05-18
 ---
 #### Added
