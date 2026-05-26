@@ -210,8 +210,39 @@ func DeleteGroup(database *db.DB) gin.HandlerFunc {
 	}
 }
 
+// GET [/api/v1/groups/:groupId/entries] - retrieves all vault entries within a specific group.
+func GetGroupEntries(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
+
+		groupId := c.Param("groupId")
+		var entries []models.VaultEntry
+		query := `
+			SELECT ve.* from vault_entries ve
+			JOIN groups g on ve.group_id = g.id
+			JOIN profiles p on g.profile_id = p.id
+			WHERE g.id = $1 AND p.user_id = $2`
+
+		err = database.Select(&entries, query, groupId, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve entries", "data": false})
+			return
+		}
+
+		if entries == nil {
+			entries = []models.VaultEntry{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Entries retrieved successfully", "data": entries})
+	}
+}
+
 // GET [/api/v1/groups/:groupId/entries/count] - retrieves the count of vault entries within a specific group.
-func GetGroupEntryCount(database *db.DB) gin.HandlerFunc {
+func GetGroupEntriesCount(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId, err := middleware.GetUserIDFromContext(c)
 		if err != nil {

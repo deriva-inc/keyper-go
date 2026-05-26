@@ -61,7 +61,8 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				groups.PATCH("/:groupId", handlers.UpdateGroup(dbIns))
 				groups.DELETE("/:groupId", handlers.DeleteGroup(dbIns))
 
-				groups.GET("/:groupId/entries/count", handlers.GetGroupEntryCount(dbIns))
+				groups.GET("/:groupId/entries", handlers.GetGroupEntries(dbIns))
+				groups.GET("/:groupId/entries/count", handlers.GetGroupEntriesCount(dbIns))
 			}
 
 			// !SECTION: Groups

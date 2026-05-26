@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.30.0] - 2026-05-26
+---
+#### Added
+- Add vault entries API endpoint on Groups services to fetch group specific data.
+
 ### [0.29.0] - 2026-05-19
 ---
 #### Updated
