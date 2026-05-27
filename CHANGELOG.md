@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.31.0] - 2026-05-27
+---
+#### Added
+- Update PATCH vault entry API endpoint with correct business logic.
+
 ### [0.30.0] - 2026-05-26
 ---
 #### Added
