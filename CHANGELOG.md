@@ -1,4 +1,11 @@
 # CHANGELOG
+### [0.32.0] - 2026-05-28
+---
+#### Added
+- Add favorites API endpoint on Vault Entry services to:
+    - Toggle an entry's favorite status.
+    - Fetch all favorite marked entries.
+
 ### [0.31.0] - 2026-05-27
 ---
 #### Added

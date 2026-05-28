@@ -141,7 +141,19 @@ func GetEntries(database *db.DB) gin.HandlerFunc {
 // GET [/api/v1/entries/:entryId] - retrieves a single vault entry.
 func GetEntry(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-Id")
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "data": false})
+			return
+		}
+
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required", "data": false})
+			return
+		}
+
 		entryID := c.Param("entryId")
 
 		var entry models.VaultEntry
@@ -150,7 +162,7 @@ func GetEntry(database *db.DB) gin.HandlerFunc {
 			JOIN profiles p ON e.profile_id = p.id
 			WHERE e.id = $1 AND p.user_id = $2`
 
-		err := database.Get(&entry, query, entryID, userID)
+		err = database.Get(&entry, query, entryID, userId)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Entry not found"})
 			return
@@ -316,5 +328,86 @@ func DeleteEntry(database *db.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Entry deleted successfully", "data": true})
+	}
+}
+
+// [GET] /api/v1/entries/favorites - retrieves all favorite entries for the user across all profiles.
+func GetFavoriteEntries(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Although the profileId isn't strictly necessary for this query (since we're filtering by userId),
+		// we still require it in the header for consistency with other endpoints and to allow for future
+		// enhancements where profile-specific logic might be needed.
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required", "data": false})
+			return
+		}
+
+		var entries []models.VaultEntry
+		query := `
+            SELECT e.* FROM vault_entries e
+            JOIN profiles p ON e.profile_id = p.id
+            WHERE e.is_favorite = TRUE AND p.user_id = $1
+            ORDER BY e.name ASC`
+
+		err = database.Select(&entries, query, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve favorite entries"})
+			return
+		}
+
+		if entries == nil {
+			entries = []models.VaultEntry{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Favorite entries retrieved successfully",
+			"data":    gin.H{"entries": entries},
+		})
+	}
+}
+
+// POST [/api/v1/entries/:entryId/favorite] - toggles the favorite status of a vault entry.
+func FavoriteEntry(database *db.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+
+		profileId := c.GetHeader("X-Profile-Id")
+
+		if profileId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Profile-Id headers are required", "data": false})
+			return
+		}
+
+		entryId := c.Param("entryId")
+		query := `
+			UPDATE vault_entries e
+			SET is_favorite = NOT e.is_favorite, updated_at = NOW()
+			FROM profiles p
+			WHERE e.id = $1 AND e.profile_id = p.id AND p.user_id = $2
+			RETURNING e.*`
+
+		var updatedEntry models.VaultEntry
+		err = database.Get(&updatedEntry, query, entryId, userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to toggle favorite status: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Favorite status toggled successfully",
+			"data":    updatedEntry,
+		})
 	}
 }

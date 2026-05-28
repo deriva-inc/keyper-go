@@ -73,9 +73,13 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				vaultEntries.GET("", handlers.GetEntries(dbIns))
 				vaultEntries.POST("", handlers.CreateEntry(dbIns))
 
+				vaultEntries.GET("/favorites", handlers.GetFavoriteEntries(dbIns))
+				vaultEntries.PATCH("/:entryId/favorite", handlers.FavoriteEntry(dbIns))
+
 				vaultEntries.GET("/:entryId", handlers.GetEntry(dbIns))
 				vaultEntries.PATCH("/:entryId", handlers.UpdateEntry(dbIns))
 				vaultEntries.DELETE("/:entryId", handlers.DeleteEntry(dbIns))
+
 			}
 			// !SECTION: Vault Entries
 		}
