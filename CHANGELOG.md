@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.33.0] - 2026-05-28
+---
+#### Added
+- Updating a group's profile id also updates related vault entries's profile id for proper mapping.
+
 ### [0.32.0] - 2026-05-28
 ---
 #### Added

@@ -369,7 +369,7 @@ func GetFavoriteEntries(database *db.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Favorite entries retrieved successfully",
-			"data":    gin.H{"entries": entries},
+			"data":    entries,
 		})
 	}
 }

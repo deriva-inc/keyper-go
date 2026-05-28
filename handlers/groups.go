@@ -151,24 +151,82 @@ func UpdateGroup(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Begin a transaction on the DB to maintain atomicity between the groups and vault_entries tables.
+		tx, err := database.Beginx()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction: " + err.Error()})
+			return
+		}
+		// Ensure the transaction is always resolved — committed on success,
+		// rolled back on any failure path below.
+		defer func() {
+			if p := recover(); p != nil {
+				tx.Rollback()
+				panic(p)
+			}
+		}()
+
+		// Step 1: Update the group itself.
 		var updatedGroup models.Group
-		query := `
+		updateGroupQuery := `
 			UPDATE groups g
-			SET 
-				name = COALESCE($1, g.name),
+			SET
+				name        = COALESCE($1, g.name),
 				description = COALESCE($2, g.description),
-				type = COALESCE($3, g.type),
-				profile_id = COALESCE($4, g.profile_id),
-				icon = COALESCE($5, g.icon),
+				type        = COALESCE($3, g.type),
+				profile_id  = COALESCE($4, g.profile_id),
+				icon        = COALESCE($5, g.icon),
 				is_archived = COALESCE($6, g.is_archived),
-				updated_at = NOW()
+				updated_at  = NOW()
 			FROM profiles p
-			WHERE g.id = $7 AND g.profile_id = p.id AND p.user_id = $8
+			WHERE g.id = $7
+			AND g.profile_id = p.id
+			AND p.user_id = $8
 			RETURNING g.*`
 
-		updateGroupErr := database.Get(&updatedGroup, query, input.Name, input.Description, input.Type, input.ProfileId, input.Icon, input.IsArchived, groupID, userId)
-		if updateGroupErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group: " + updateGroupErr.Error()})
+		err = tx.Get(
+			&updatedGroup, updateGroupQuery,
+			input.Name,        // $1
+			input.Description, // $2
+			input.Type,        // $3
+			input.ProfileId,   // $4
+			input.Icon,        // $5
+			input.IsArchived,  // $6
+			groupID,           // $7
+			userId,            // $8
+		)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group: " + err.Error()})
+			return
+		}
+
+		// Step 2: If the caller requested a profile_id change, cascade it
+		// to every vault entry that belongs to this group.
+		// We use the updatedGroup.ProfileID from the RETURNING clause above —
+		// this is the authoritative new value regardless of what $4 was,
+		// and it correctly handles the COALESCE (i.e. if ProfileId was nil,
+		// updatedGroup.ProfileID is still the correct unchanged value so we
+		// skip the update entirely).
+		if input.ProfileId != nil {
+			updateEntriesQuery := `
+				UPDATE vault_entries
+				SET
+					profile_id = $1,
+					updated_at = NOW()
+				WHERE group_id = $2`
+
+			_, err = tx.Exec(updateEntriesQuery, updatedGroup.ProfileID, groupID)
+			if err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cascade profile update to entries: " + err.Error()})
+				return
+			}
+		}
+
+		// Both queries succeeded — commit the transaction.
+		if err = tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
 			return
 		}
 
