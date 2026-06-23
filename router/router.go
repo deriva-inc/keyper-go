@@ -30,7 +30,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			{
 				users.GET("/", handlers.GetUserProfile(dbIns))
 				users.DELETE("/", handlers.DeleteUserProfile(dbIns))
-				users.PATCH("/:userId", handlers.UpdateUserProfile(dbIns))
+				users.PATCH("/", handlers.UpdateUserProfile(dbIns))
 			}
 			// !SECTION: Users API Endpoints
 

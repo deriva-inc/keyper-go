@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.33.1] - 2026-06-24
+---
+#### Updated
+- Fix user route for updating profile.
+
 ### [0.33.0] - 2026-05-28
 ---
 #### Added
