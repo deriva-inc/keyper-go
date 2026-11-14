@@ -4,17 +4,21 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   contents: write
   pull-requests: write
+  packages: write
 
 jobs:
   version:
-    name: Version & Release PR
+    name: Version PR or Publish Tags
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,6 +46,13 @@ jobs:
           version: pnpm run version
           publish: pnpm run release
           title: "chore(release): version packages and update changelog"
-          commit: "chore(release): version packages [skip ci]"
+          commit: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-release:
+    name: Trigger Release Pipeline
+    needs: version
+    if: needs.version.outputs.published == 'true'
+    uses: ./.github/workflows/release.yaml
+    secrets: inherit
