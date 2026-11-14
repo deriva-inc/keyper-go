@@ -27,6 +27,15 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			users.GET("/salt", handlers.GetUserSalt(dbIns))
 		}
 
+		// SECTION: Health & Kubernetes Probes
+		health := v1.Group("/health")
+		{
+			health.GET("", handlers.HealthCheck(dbIns))
+			health.GET("/live", handlers.LivenessProbe())
+			health.GET("/ready", handlers.ReadinessProbe(dbIns))
+			health.GET("/startup", handlers.StartupProbe(dbIns))
+		}
+
 		// SECTION: Authenticated Routes
 		authRequired := v1.Group("/")
 		authRequired.Use(middleware.AuthRequired())
