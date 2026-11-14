@@ -51,9 +51,6 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 				users.GET("/", handlers.GetUserProfile(dbIns))
 				users.DELETE("/", handlers.DeleteUserProfile(dbIns))
 				users.PATCH("/", handlers.UpdateUserProfile(dbIns))
-				users.GET("/sessions", handlers.GetUserSessions(dbIns))
-				users.DELETE("/sessions", handlers.RevokeAllSessions(dbIns))
-				users.DELETE("/sessions/:sessionId", handlers.RevokeSession(dbIns))
 			}
 			// !SECTION: Users API Endpoints
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -20,6 +21,12 @@ func GenerateRefreshToken() (string, error) {
 		return "", fmt.Errorf("failed to generate random refresh token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+// HashRefreshToken computes the SHA-256 hash of a raw refresh token before DB storage or lookup.
+func HashRefreshToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
 
 // RefreshTokenReq defines request payload for /api/v1/auth/refresh
@@ -42,13 +49,15 @@ func RefreshToken(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find existing session by refresh token that has not expired
+		hashedToken := HashRefreshToken(input.RefreshToken)
+
+		// Find existing session by hashed refresh token that has not expired
 		var session models.UserSession
 		query := `
 			SELECT id, user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active
 			FROM user_sessions
 			WHERE refresh_token = $1`
-		err := database.Get(&session, query, input.RefreshToken)
+		err := database.Get(&session, query, hashedToken)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 			return
@@ -69,18 +78,19 @@ func RefreshToken(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Rotate refresh token for security and update last_active timestamp
+		// Rotate refresh token for security, hash the new token, and update last_active timestamp
 		newRefreshToken, err := GenerateRefreshToken()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to rotate refresh token: " + err.Error()})
 			return
 		}
+		newHashedToken := HashRefreshToken(newRefreshToken)
 
 		updateQuery := `
 			UPDATE user_sessions
 			SET refresh_token = $1, last_active = NOW()
 			WHERE id = $2`
-		_, err = database.Exec(updateQuery, newRefreshToken, session.ID)
+		_, err = database.Exec(updateQuery, newHashedToken, session.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update session: " + err.Error()})
 			return
@@ -97,7 +107,7 @@ func RefreshToken(database *db.DB) gin.HandlerFunc {
 	}
 }
 
-// Logout invalidates a user's session by removing the refresh token.
+// Logout invalidates a user's single session/device by removing its refresh token.
 // POST /api/v1/auth/logout
 func Logout(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -105,7 +115,8 @@ func Logout(database *db.DB) gin.HandlerFunc {
 		_ = c.ShouldBindJSON(&input)
 
 		if input.RefreshToken != "" {
-			_, _ = database.Exec("DELETE FROM user_sessions WHERE refresh_token = $1", input.RefreshToken)
+			hashedToken := HashRefreshToken(input.RefreshToken)
+			_, _ = database.Exec("DELETE FROM user_sessions WHERE refresh_token = $1", hashedToken)
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -114,46 +125,8 @@ func Logout(database *db.DB) gin.HandlerFunc {
 	}
 }
 
-// GetUserSessions lists all active sessions for the authenticated user.
-// GET /api/v1/users/sessions
-func GetUserSessions(database *db.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userIDVal, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		userID, ok := userIDVal.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
-			return
-		}
-
-		var sessions []models.UserSession
-		query := `
-			SELECT id, user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active
-			FROM user_sessions
-			WHERE user_id = $1 AND expiry_time > NOW()
-			ORDER BY last_active DESC`
-		err := database.Select(&sessions, query, userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user sessions: " + err.Error()})
-			return
-		}
-
-		if sessions == nil {
-			sessions = []models.UserSession{}
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"data": sessions,
-		})
-	}
-}
-
 // RevokeAllSessions revokes all sessions for the authenticated user ("log out from everywhere").
-// POST /api/v1/auth/logout-all or DELETE /api/v1/users/sessions
+// POST /api/v1/auth/logout-all
 func RevokeAllSessions(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDVal, exists := c.Get("userID")
@@ -176,47 +149,6 @@ func RevokeAllSessions(database *db.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Logged out from all devices successfully",
-		})
-	}
-}
-
-// RevokeSession revokes a specific session belonging to the authenticated user.
-// DELETE /api/v1/users/sessions/:sessionId
-func RevokeSession(database *db.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userIDVal, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		userID, ok := userIDVal.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
-			return
-		}
-
-		sessionIDStr := c.Param("sessionId")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session ID"})
-			return
-		}
-
-		res, err := database.Exec("DELETE FROM user_sessions WHERE id = $1 AND user_id = $2", sessionID, userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke session: " + err.Error()})
-			return
-		}
-
-		rows, _ := res.RowsAffected()
-		if rows == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Session revoked successfully",
 		})
 	}
 }

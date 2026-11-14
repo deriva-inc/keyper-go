@@ -245,7 +245,8 @@ func Login(database *db.DB) gin.HandlerFunc {
 			insertSessionQuery := `
 				INSERT INTO user_sessions (user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
 				VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`
-			_, err = database.Exec(insertSessionQuery, existingUser.ID, refreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
+			hashedRefreshToken := HashRefreshToken(refreshToken)
+			_, err = database.Exec(insertSessionQuery, existingUser.ID, hashedRefreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session: " + err.Error()})
 				return

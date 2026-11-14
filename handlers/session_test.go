@@ -172,12 +172,13 @@ func TestRefreshToken_Success(t *testing.T) {
 	sessionID := uuid.New()
 	userID := uuid.New()
 	oldRT := "valid-old-refresh-token"
+	hashedOldRT := HashRefreshToken(oldRT)
 	validExpiry := time.Now().Add(5 * 24 * time.Hour)
 
 	mock.ExpectQuery("SELECT (.+) FROM user_sessions WHERE refresh_token = \\$1").
-		WithArgs(oldRT).
+		WithArgs(hashedOldRT).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "refresh_token", "expiry_time", "browser", "os", "manufacturer", "creation_time", "last_active"}).
-			AddRow(sessionID, userID, oldRT, validExpiry, "Chrome", "macOS", "Apple", time.Now(), time.Now()))
+			AddRow(sessionID, userID, hashedOldRT, validExpiry, "Chrome", "macOS", "Apple", time.Now(), time.Now()))
 
 	mock.ExpectExec("UPDATE user_sessions SET refresh_token = \\$1, last_active = NOW\\(\\) WHERE id = \\$2").
 		WithArgs(sqlmock.AnyArg(), sessionID).
@@ -218,12 +219,13 @@ func TestRefreshToken_Expired(t *testing.T) {
 	sessionID := uuid.New()
 	userID := uuid.New()
 	oldRT := "expired-refresh-token"
+	hashedOldRT := HashRefreshToken(oldRT)
 	expiredTime := time.Now().Add(-1 * time.Hour)
 
 	mock.ExpectQuery("SELECT (.+) FROM user_sessions WHERE refresh_token = \\$1").
-		WithArgs(oldRT).
+		WithArgs(hashedOldRT).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "refresh_token", "expiry_time", "browser", "os", "manufacturer", "creation_time", "last_active"}).
-			AddRow(sessionID, userID, oldRT, expiredTime, "Chrome", "macOS", "Apple", time.Now(), time.Now()))
+			AddRow(sessionID, userID, hashedOldRT, expiredTime, "Chrome", "macOS", "Apple", time.Now(), time.Now()))
 
 	mock.ExpectExec("DELETE FROM user_sessions WHERE id = \\$1").
 		WithArgs(sessionID).
@@ -248,8 +250,9 @@ func TestLogout_Success(t *testing.T) {
 	r.POST("/logout", Logout(database))
 
 	token := "token-to-logout"
+	hashedToken := HashRefreshToken(token)
 	mock.ExpectExec("DELETE FROM user_sessions WHERE refresh_token = \\$1").
-		WithArgs(token).
+		WithArgs(hashedToken).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	body, _ := json.Marshal(map[string]string{
@@ -281,29 +284,6 @@ func TestRevokeAllSessions_Success(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/logout-all", nil)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d", w.Code)
-	}
-}
-
-func TestRevokeSession_Success(t *testing.T) {
-	r, database, mock := setupSessionTestRouter(t)
-	userID := uuid.New()
-	sessionID := uuid.New()
-
-	r.DELETE("/sessions/:sessionId", func(c *gin.Context) {
-		c.Set("userID", userID)
-		RevokeSession(database)(c)
-	})
-
-	mock.ExpectExec("DELETE FROM user_sessions WHERE id = \\$1 AND user_id = \\$2").
-		WithArgs(sessionID, userID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodDelete, "/sessions/"+sessionID.String(), nil)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {

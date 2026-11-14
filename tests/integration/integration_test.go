@@ -208,10 +208,11 @@ func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T
 	}
 
 	// 2. Refresh token flow
+	hashedInitialRT := handlers.HashRefreshToken(loginResp.Data.RefreshToken)
 	mock.ExpectQuery("SELECT (.+) FROM user_sessions WHERE refresh_token = \\$1").
-		WithArgs(loginResp.Data.RefreshToken).
+		WithArgs(hashedInitialRT).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "refresh_token", "expiry_time", "browser", "os", "manufacturer", "creation_time", "last_active"}).
-			AddRow(sessionID, userID, loginResp.Data.RefreshToken, time.Now().Add(6*24*time.Hour), "Chrome", "macOS", "Apple", time.Now(), time.Now()))
+			AddRow(sessionID, userID, hashedInitialRT, time.Now().Add(6*24*time.Hour), "Chrome", "macOS", "Apple", time.Now(), time.Now()))
 
 	mock.ExpectExec("UPDATE user_sessions SET refresh_token = \\$1, last_active = NOW\\(\\) WHERE id = \\$2").
 		WithArgs(sqlmock.AnyArg(), sessionID).
@@ -242,8 +243,9 @@ func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T
 	}
 
 	// 3. Logout flow
+	hashedRotatedRT := handlers.HashRefreshToken(refreshResp.Data.RefreshToken)
 	mock.ExpectExec("DELETE FROM user_sessions WHERE refresh_token = \\$1").
-		WithArgs(refreshResp.Data.RefreshToken).
+		WithArgs(hashedRotatedRT).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	logoutBody, _ := json.Marshal(map[string]string{
