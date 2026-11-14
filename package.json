@@ -1,11 +1,11 @@
 {
   "name": "keyper-go",
-  "version": "0.34.0",
+  "version": "0.35.1",
   "private": true,
   "description": "Zero-knowledge credentials and password vault backend in Go.",
   "scripts": {
     "changeset": "changeset",
-    "version": "changeset version",
+    "version": "changeset version && node ./scripts/format-changelog.cjs",
     "release": "changeset tag && node -e \"const v=require('./package.json').version; try { require('child_process').execSync('git tag v' + v, {stdio: 'inherit'}); } catch(e){}\""
   },
   "devDependencies": {

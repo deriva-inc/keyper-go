@@ -1,11 +1,20 @@
 # CHANGELOG
 
-## 0.34.0
+### [0.35.1] - 2026-11-14
 
-### Minor Changes
+---
 
-- 753e591: Add semantic version management using Changeset and version pipeline.
-- 5a24e52: Add test cases.
+#### Added
+
+- Add semantic version management using Changeset and version pipeline.
+
+### [0.35.0] - 2026-11-14
+
+---
+
+#### Added
+
+- Add test cases.
 
 ### [0.34.0] - 2026-11-14
 
