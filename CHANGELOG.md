@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.39.1] - 2026-11-14
+
+---
+
+#### Updated
+
+- Fix issue on image release pipeline.
+
 ### [0.39.0] - 2026-11-14
 
 ---
