@@ -13,7 +13,6 @@ type User struct {
 	Email          string    `db:"email" json:"email"`
 	AuthKey        string    `db:"auth_key" json:"authKey"`
 	AuthSalt       string    `db:"auth_salt" json:"authSalt"`
-	EncryptionKey  string    `db:"encryption_key" json:"encryptionKey"`
 	EncryptionSalt string    `db:"encryption_salt" json:"encryptionSalt"`
 	RecoveryHash   *string   `db:"recovery_hash" json:"recoveryHash,omitempty"`
 	RecoverySalt   *string   `db:"recovery_salt" json:"recoverySalt,omitempty"`

@@ -6,35 +6,45 @@ import (
 	"github.com/deriva-inc/keyper-go/db"
 	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
+	"github.com/deriva-inc/keyper-go/utils/logger"
 	"github.com/gin-gonic/gin"
 )
 
 // GET [/api/v1/users/salt] - retrieves the salt for a given user's email.
 func GetUserSalt(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logger := logger.New()
 		email := c.Query("email")
 		if email == "" {
+			logger.Error("Email query parameter is required", "email", email)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Email query parameter is required"})
 			return
 		}
 
 		var UserSalts struct {
-			AuthSalt       string `db:"auth_salt"`
-			EncryptionSalt string `db:"encryption_salt"`
+			AuthSalt       string  `db:"auth_salt"`
+			EncryptionSalt string  `db:"encryption_salt"`
+			RecoverySalt   *string `db:"recovery_salt"`
 		}
 
-		err := database.Get(&UserSalts, "SELECT auth_salt, encryption_salt FROM users WHERE email = $1", email)
+		err := database.Get(&UserSalts, "SELECT auth_salt, encryption_salt, recovery_salt FROM users WHERE email = $1", email)
 		if err != nil {
+			logger.Error("User not found.")
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
+		data := gin.H{
+			"authSalt":       UserSalts.AuthSalt,
+			"encryptionSalt": UserSalts.EncryptionSalt,
+		}
+		if UserSalts.RecoverySalt != nil {
+			data["recoverySalt"] = *UserSalts.RecoverySalt
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Salt retrieved successfully",
-			"data": gin.H{
-				"authSalt":       UserSalts.AuthSalt,
-				"encryptionSalt": UserSalts.EncryptionSalt,
-			},
+			"data":    data,
 		})
 	}
 }
