@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.38.1] - 2026-11-14
+
+---
+
+#### Updated
+
+- Local verification of release pipelines and trigger Docker image build on tag push.
+
 ### [0.38.0] - 2026-11-14
 
 ---
