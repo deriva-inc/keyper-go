@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.38.2] - 2026-11-14
+
+---
+
+#### Updated
+
+- Fix release pipeline issues on PR merge.
+
 ### [0.38.1] - 2026-11-14
 
 ---
