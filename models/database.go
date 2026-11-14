@@ -13,9 +13,9 @@ type User struct {
 	Email          string    `db:"email" json:"email"`
 	AuthKey        string    `db:"auth_key" json:"authKey"`
 	AuthSalt       string    `db:"auth_salt" json:"authSalt"`
-	EncryptionKey  string    `db:"encryption_key" json:"encryptionKey"`
 	EncryptionSalt string    `db:"encryption_salt" json:"encryptionSalt"`
-	RecoveryKey    *string   `db:"recovery_hash" json:"recoveryKey,omitempty"`
+	RecoveryHash   *string   `db:"recovery_hash" json:"recoveryHash,omitempty"`
+	RecoverySalt   *string   `db:"recovery_salt" json:"recoverySalt,omitempty"`
 	Name           *string   `db:"name" json:"name,omitempty"`
 	AvatarURL      *string   `db:"avatar_url" json:"avatarUrl,omitempty"`
 	CreatedAt      time.Time `db:"created_at" json:"createdAt"`

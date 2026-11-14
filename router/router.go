@@ -15,6 +15,12 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		{
 			auth.POST("/signup", handlers.RegisterUser(dbIns))
 			auth.POST("/login", handlers.Login(dbIns))
+
+			// Recovery endpoints
+			auth.POST("/recovery/setup", handlers.RecoverySetup(dbIns))
+			auth.POST("/recovery/initiate", handlers.RecoveryInitiate(dbIns))
+			auth.POST("/reset-password/confirm", handlers.ResetPasswordConfirm(dbIns))
+			auth.POST("/recovery/complete", handlers.RecoveryComplete(dbIns))
 		}
 		users := v1.Group("/users")
 		{
@@ -82,6 +88,13 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 
 			}
 			// !SECTION: Vault Entries
+
+			// SECTION: Dashboard Stats
+			stats := authRequired.Group("/stats")
+			{
+				stats.GET("/dashboard", handlers.GetDashboardStats(dbIns))
+			}
+			// !SECTION: Dashboard Stats
 		}
 		// !SECTION: Authenticated Routes
 		// !SECTION: Authentication

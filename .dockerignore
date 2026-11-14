@@ -1,0 +1,14 @@
+.git
+.github
+.vscode
+.agent
+tmp
+bin
+*.log
+.env
+.env.*
+!.env.example
+*.md
+coverage.out
+coverage.html
+

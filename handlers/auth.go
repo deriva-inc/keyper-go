@@ -15,7 +15,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type RegisterUserReq struct {
@@ -24,7 +23,6 @@ type RegisterUserReq struct {
 	AvatarURL      string `json:"avatarUrl" binding:"required,url"`
 	AuthSalt       string `json:"authSalt" binding:"required"`
 	AuthKey        string `json:"authKey" binding:"required"`
-	EncryptionKey  string `json:"encryptionKey" binding:"required"`
 	EncryptionSalt string `json:"encryptionSalt" binding:"required"`
 }
 
@@ -123,35 +121,20 @@ func RegisterUser(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Hashing the AuthKey once again on the server for more security.
+		// Hashing the AuthKey once again on the server with pepper for defense-in-depth.
 		clientAuthKey := input.AuthKey
+		pepper := GetPepper()
 
-		hashedAuthKeyForDB, err := bcrypt.GenerateFromPassword([]byte(clientAuthKey), bcrypt.DefaultCost)
+		hashedAuthKeyForDB, err := GeneratePepperedHash(clientAuthKey, pepper)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure user credentials"})
 			return
 		}
 
-		// Hashing the AuthKey once again on the server for more security.
-		encryptionKeyHash := input.EncryptionKey
-
-		hashedEncryptionKeyForDB, err := bcrypt.GenerateFromPassword([]byte(encryptionKeyHash), bcrypt.DefaultCost)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure user credentials"})
-			return
-		}
-
-		// Generate a recovery key and hash it for storage.
+		// Generate a recovery key to return to the client for recovery setup.
 		recoveryKey, err := GenerateRecoveryKey()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate recovery key"})
-			return
-		}
-
-		// Generate the bcrypt hash of the recovery key to be stored in the database.
-		recoveryHash, recHashErr := bcrypt.GenerateFromPassword([]byte(recoveryKey), bcrypt.DefaultCost)
-		if recHashErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash recovery key"})
 			return
 		}
 
@@ -159,11 +142,11 @@ func RegisterUser(database *db.DB) gin.HandlerFunc {
 		var newUser models.User
 
 		query := `
-            INSERT INTO users (email, name, avatar_url, auth_key, auth_salt, encryption_key, encryption_salt, recovery_hash, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            INSERT INTO users (email, name, avatar_url, auth_key, auth_salt, encryption_salt, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
             RETURNING id, email, name, avatar_url, created_at, updated_at`
 
-		createUserInDBErr := database.Get(&newUser, query, input.Email, input.Name, input.AvatarURL, string(hashedAuthKeyForDB), input.AuthSalt, string(hashedEncryptionKeyForDB), input.EncryptionSalt, recoveryHash)
+		createUserInDBErr := database.Get(&newUser, query, input.Email, input.Name, input.AvatarURL, string(hashedAuthKeyForDB), input.AuthSalt, input.EncryptionSalt)
 		if createUserInDBErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + createUserInDBErr.Error()})
 			return
@@ -205,11 +188,19 @@ func Login(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Compare hashes, one sent by the client and one stored in the database.
-		err := bcrypt.CompareHashAndPassword([]byte(existingUser.AuthKey), []byte(input.AuthKey))
-		if err != nil {
+		// Compare hashes with pepper, seamlessly supporting legacy unpeppered hashes with auto-upgrade.
+		pepper := GetPepper()
+		matched, needsRehash := ComparePasswordWithPepper(existingUser.AuthKey, input.AuthKey, pepper)
+		if !matched {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
+		}
+
+		// Opportunistically upgrade legacy unpeppered records upon successful login
+		if needsRehash && pepper != "" {
+			if upgradedHash, err := GeneratePepperedHash(input.AuthKey, pepper); err == nil {
+				_, _ = database.Exec("UPDATE users SET auth_key = $1, updated_at = NOW() WHERE id = $2", upgradedHash, existingUser.ID)
+			}
 		}
 
 		// Generate JWT for the session.
