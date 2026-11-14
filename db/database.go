@@ -15,7 +15,6 @@ type DB struct {
 
 // Connect initializes and returns a new DB connection.
 func Connect(dsn string) (*DB, error) {
-
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -27,4 +26,9 @@ func Connect(dsn string) (*DB, error) {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	return &DB{db}, nil
+}
+
+// NewFromDB wraps an existing sqlx.DB instance (useful for testing and mocks).
+func NewFromDB(sqlxDB *sqlx.DB) *DB {
+	return &DB{sqlxDB}
 }
