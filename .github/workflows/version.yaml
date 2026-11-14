@@ -55,4 +55,6 @@ jobs:
     needs: version
     if: needs.version.outputs.published == 'true'
     uses: ./.github/workflows/release.yaml
+    with:
+      is_release: true
     secrets: inherit
