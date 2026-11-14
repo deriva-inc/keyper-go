@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.39.0] - 2026-11-14
+
+---
+
+#### Added
+
+- Add health checks and fix release pipeline.
+
 ### [0.38.2] - 2026-11-14
 
 ---
