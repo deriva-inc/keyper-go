@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.36.0] - 2026-11-14
+
+---
+
+#### Added
+
+- Fix Changelog formatting issue with Changeset.
+
 ### [0.35.1] - 2026-11-14
 
 ---
