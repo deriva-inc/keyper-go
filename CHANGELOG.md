@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.37.0] - 2026-11-14
+
+---
+
+#### Added
+
+- Add hashing via pepper secret on server and add dashboard stats APIs.
+
 ### [0.36.0] - 2026-11-14
 
 ---
