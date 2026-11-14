@@ -1,4 +1,9 @@
 # CHANGELOG
+### [0.34.0] - 2026-11-14
+---
+#### Added
+- Added account recovery functionality using user's unique account recovery key.
+
 ### [0.33.1] - 2026-06-24
 ---
 #### Updated
