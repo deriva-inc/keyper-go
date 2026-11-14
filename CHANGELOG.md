@@ -8,6 +8,10 @@
 
 - Add Dockerfile and release pipeline to push Docker image on GitHub registry.
 
+### [0.37.1] - 2026-11-14
+
+---
+
 #### Updated
 
 - Fix vulnerability checks on the server.
