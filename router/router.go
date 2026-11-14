@@ -15,6 +15,8 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		{
 			auth.POST("/signup", handlers.RegisterUser(dbIns))
 			auth.POST("/login", handlers.Login(dbIns))
+			auth.POST("/refresh", handlers.RefreshToken(dbIns))
+			auth.POST("/logout", handlers.Logout(dbIns))
 
 			// Recovery endpoints
 			auth.POST("/recovery/setup", handlers.RecoverySetup(dbIns))
@@ -40,12 +42,18 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 		authRequired := v1.Group("/")
 		authRequired.Use(middleware.AuthRequired())
 		{
+			// Auth actions requiring active JWT
+			authRequired.POST("/auth/logout-all", handlers.RevokeAllSessions(dbIns))
+
 			// SECTION: Users API Endpoints
 			users := authRequired.Group("/users")
 			{
 				users.GET("/", handlers.GetUserProfile(dbIns))
 				users.DELETE("/", handlers.DeleteUserProfile(dbIns))
 				users.PATCH("/", handlers.UpdateUserProfile(dbIns))
+				users.GET("/sessions", handlers.GetUserSessions(dbIns))
+				users.DELETE("/sessions", handlers.RevokeAllSessions(dbIns))
+				users.DELETE("/sessions/:sessionId", handlers.RevokeSession(dbIns))
 			}
 			// !SECTION: Users API Endpoints
 

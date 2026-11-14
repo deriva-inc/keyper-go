@@ -70,3 +70,16 @@ type VaultEntry struct {
 	CreatedAt      time.Time       `db:"created_at" json:"createdAt"`
 	UpdatedAt      time.Time       `db:"updated_at" json:"updatedAt"`
 }
+
+// UserSession corresponds to the 'user_sessions' table
+type UserSession struct {
+	ID           uuid.UUID `db:"id" json:"id"`
+	UserID       uuid.UUID `db:"user_id" json:"userId"`
+	RefreshToken string    `db:"refresh_token" json:"refreshToken"`
+	ExpiryTime   time.Time `db:"expiry_time" json:"expiryTime"`
+	Browser      *string   `db:"browser" json:"browser,omitempty"`
+	OS           *string   `db:"os" json:"os,omitempty"`
+	Manufacturer *string   `db:"manufacturer" json:"manufacturer,omitempty"`
+	CreationTime time.Time `db:"creation_time" json:"creationTime"`
+	LastActive   time.Time `db:"last_active" json:"lastActive"`
+}

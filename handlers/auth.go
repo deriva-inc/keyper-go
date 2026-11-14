@@ -27,8 +27,10 @@ type RegisterUserReq struct {
 }
 
 type LoginUserReq struct {
-	Email   string `json:"email" binding:"required,email"`
-	AuthKey string `json:"authKey" binding:"required"`
+	Email      string      `json:"email" binding:"required,email"`
+	AuthKey    string      `json:"authKey" binding:"required"`
+	RememberMe bool        `json:"rememberMe"`
+	DeviceInfo *DeviceInfo `json:"deviceInfo,omitempty"`
 }
 
 type JWTClaims struct {
@@ -203,11 +205,51 @@ func Login(database *db.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Generate JWT for the session.
+		// Generate JWT for the session (access token always 24h).
 		accessToken, jwtErr := GenerateJWT(existingUser.ID, 24*time.Hour)
 		if jwtErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token: " + jwtErr.Error()})
 			return
+		}
+
+		// Handle session & refresh token if rememberMe is requested
+		var refreshToken string
+		var sessionExpiry *time.Time
+
+		if input.RememberMe {
+			rt, err := GenerateRefreshToken()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token: " + err.Error()})
+				return
+			}
+			refreshToken = rt
+
+			// Session duration is 7 days when rememberMe is true
+			expiry := time.Now().Add(7 * 24 * time.Hour)
+			sessionExpiry = &expiry
+
+			// Determine device info: use provided deviceInfo or parse User-Agent
+			devInfo := ParseUserAgent(c.GetHeader("User-Agent"))
+			if input.DeviceInfo != nil {
+				if input.DeviceInfo.Browser != nil && *input.DeviceInfo.Browser != "" {
+					devInfo.Browser = input.DeviceInfo.Browser
+				}
+				if input.DeviceInfo.OS != nil && *input.DeviceInfo.OS != "" {
+					devInfo.OS = input.DeviceInfo.OS
+				}
+				if input.DeviceInfo.Manufacturer != nil && *input.DeviceInfo.Manufacturer != "" {
+					devInfo.Manufacturer = input.DeviceInfo.Manufacturer
+				}
+			}
+
+			insertSessionQuery := `
+				INSERT INTO user_sessions (user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
+				VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`
+			_, err = database.Exec(insertSessionQuery, existingUser.ID, refreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session: " + err.Error()})
+				return
+			}
 		}
 
 		userResponse := gin.H{
@@ -219,13 +261,19 @@ func Login(database *db.DB) gin.HandlerFunc {
 			"updatedAt": existingUser.UpdatedAt,
 		}
 
+		responseData := gin.H{
+			"accessToken": accessToken,
+			"user":        userResponse,
+		}
+		if refreshToken != "" {
+			responseData["refreshToken"] = refreshToken
+			responseData["expiryTime"] = sessionExpiry
+		}
+
 		// return success reponse
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "Login successful",
-			"data": gin.H{
-				"accessToken": accessToken,
-				"user":        userResponse,
-			},
+			"data":    responseData,
 		})
 	}
 }
