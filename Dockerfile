@@ -3,7 +3,7 @@
 # ==============================================================================
 # Stage 1: Build static binary
 # ==============================================================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 ARG VERSION=dev
 ARG GIT_COMMIT=none
