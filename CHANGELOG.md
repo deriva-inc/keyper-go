@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.38.0] - 2026-11-14
+
+---
+
+#### Added
+
+- Add Dockerfile and release pipeline to push Docker image on GitHub registry.
+
 ### [0.37.0] - 2026-11-14
 
 ---
