@@ -1,6 +1,6 @@
 {
   "name": "keyper-go",
-  "version": "0.38.0",
+  "version": "0.38.1",
   "private": true,
   "description": "Zero-knowledge credentials and password vault backend in Go.",
   "scripts": {
