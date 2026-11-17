@@ -103,12 +103,16 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 			}
 			// !SECTION: Vault Entries
 
-			// SECTION: Dashboard Stats
-			stats := authRequired.Group("/stats")
+			// SECTION: Dashboard
+			dashboard := authRequired.Group("/dashboard")
 			{
-				stats.GET("/dashboard", handlers.GetDashboardStats(dbIns))
+				dashboard.GET("", handlers.GetDashboardOverview(dbIns))
+				dashboard.GET("/stats", handlers.GetDashboardStats(dbIns))
+				dashboard.GET("/security-score", handlers.GetSecurityScore(dbIns))
+				dashboard.GET("/distribution", handlers.GetEntryDistribution(dbIns))
+				dashboard.GET("/activity", handlers.GetRecentActivity(dbIns))
 			}
-			// !SECTION: Dashboard Stats
+			// !SECTION: Dashboard
 		}
 		// !SECTION: Authenticated Routes
 		// !SECTION: Authentication
