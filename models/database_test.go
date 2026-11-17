@@ -101,3 +101,41 @@ func TestVaultEntryModel_JSONSerialization(t *testing.T) {
 	}
 }
 
+func TestUserSessionModel_JSONSerialization(t *testing.T) {
+	id := uuid.New()
+	userID := uuid.New()
+	browser := "Chrome"
+	os := "macOS"
+	manufacturer := "Apple"
+	now := time.Now().Truncate(time.Second)
+
+	session := UserSession{
+		ID:           id,
+		UserID:       userID,
+		RefreshToken: "test-refresh-token-xyz",
+		ExpiryTime:   now.Add(7 * 24 * time.Hour),
+		Browser:      &browser,
+		OS:           &os,
+		Manufacturer: &manufacturer,
+		CreationTime: now,
+		LastActive:   now,
+	}
+
+	data, err := json.Marshal(session)
+	if err != nil {
+		t.Fatalf("failed to marshal session: %v", err)
+	}
+
+	var decoded UserSession
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal session: %v", err)
+	}
+
+	if decoded.RefreshToken != session.RefreshToken || decoded.UserID != session.UserID {
+		t.Errorf("decoded session mismatch: expected %v, got %v", session, decoded)
+	}
+	if decoded.Browser == nil || *decoded.Browser != "Chrome" {
+		t.Errorf("decoded session browser mismatch: expected Chrome, got %v", decoded.Browser)
+	}
+}
+

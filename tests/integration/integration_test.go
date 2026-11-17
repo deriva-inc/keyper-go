@@ -114,6 +114,10 @@ func TestIntegration_UserLogin_Success(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "auth_key", "name", "created_at", "updated_at"}).
 			AddRow(userID, email, string(hashedKey), "Login User", time.Now(), time.Now()))
 
+	mock.ExpectExec("INSERT INTO user_sessions").
+		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
 	body, _ := json.Marshal(map[string]string{
 		"email":   email,
 		"authKey": rawPasswordKey,
@@ -151,6 +155,115 @@ func TestIntegration_UserLogin_InvalidCredentials(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status 401 Unauthorized, got %d", w.Code)
+	}
+}
+
+func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T) {
+	os.Setenv("JWT_SECRET", "test-secret-key-1234567890123456")
+	defer os.Unsetenv("JWT_SECRET")
+
+	r, _, mock := setupTestApp(t)
+	email := "rememberme@example.com"
+	rawPasswordKey := "client-auth-key-123"
+	hashedKey, _ := bcrypt.GenerateFromPassword([]byte(rawPasswordKey), bcrypt.DefaultCost)
+	userID := uuid.New()
+	sessionID := uuid.New()
+
+	// 1. Login with rememberMe
+	mock.ExpectQuery("SELECT (.+) FROM users WHERE email = \\$1").
+		WithArgs(email).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "auth_key", "name", "created_at", "updated_at"}).
+			AddRow(userID, email, string(hashedKey), "Remember User", time.Now(), time.Now()))
+
+	mock.ExpectExec("INSERT INTO user_sessions").
+		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), "Chrome", "macOS", "Apple").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	loginBody, _ := json.Marshal(map[string]interface{}{
+		"email":      email,
+		"authKey":    rawPasswordKey,
+		"rememberMe": true,
+		"deviceInfo": map[string]string{
+			"browser":      "Chrome",
+			"os":           "macOS",
+			"manufacturer": "Apple",
+		},
+	})
+
+	wLogin := httptest.NewRecorder()
+	reqLogin, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(loginBody))
+	reqLogin.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(wLogin, reqLogin)
+
+	if wLogin.Code != http.StatusCreated {
+		t.Fatalf("expected status 201 Created, got %d: %s", wLogin.Code, wLogin.Body.String())
+	}
+
+	var loginResp struct {
+		Data struct {
+			AccessToken  string `json:"accessToken"`
+			RefreshToken string `json:"refreshToken"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wLogin.Body.Bytes(), &loginResp)
+
+	if loginResp.Data.RefreshToken == "" {
+		t.Fatalf("expected refreshToken in login response")
+	}
+
+	// 2. Refresh token flow
+	hashedInitialRT := handlers.HashRefreshToken(loginResp.Data.RefreshToken)
+	mock.ExpectQuery("SELECT (.+) FROM user_sessions WHERE refresh_token = \\$1").
+		WithArgs(hashedInitialRT).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "refresh_token", "expiry_time", "browser", "os", "manufacturer", "creation_time", "last_active"}).
+			AddRow(sessionID, userID, hashedInitialRT, time.Now().Add(6*24*time.Hour), "Chrome", "macOS", "Apple", time.Now(), time.Now()))
+
+	mock.ExpectExec("UPDATE user_sessions SET refresh_token = \\$1, last_active = NOW\\(\\) WHERE id = \\$2").
+		WithArgs(sqlmock.AnyArg(), sessionID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	refreshBody, _ := json.Marshal(map[string]string{
+		"refreshToken": loginResp.Data.RefreshToken,
+	})
+
+	wRefresh := httptest.NewRecorder()
+	reqRefresh, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewReader(refreshBody))
+	reqRefresh.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(wRefresh, reqRefresh)
+
+	if wRefresh.Code != http.StatusOK {
+		t.Fatalf("expected status 200 OK from refresh, got %d: %s", wRefresh.Code, wRefresh.Body.String())
+	}
+
+	var refreshResp struct {
+		Data struct {
+			AccessToken  string `json:"accessToken"`
+			RefreshToken string `json:"refreshToken"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wRefresh.Body.Bytes(), &refreshResp)
+	if refreshResp.Data.AccessToken == "" || refreshResp.Data.RefreshToken == "" {
+		t.Errorf("expected new access and refresh tokens, got %+v", refreshResp.Data)
+	}
+
+	// 3. Logout flow
+	hashedRotatedRT := handlers.HashRefreshToken(refreshResp.Data.RefreshToken)
+	mock.ExpectExec("DELETE FROM user_sessions WHERE refresh_token = \\$1").
+		WithArgs(hashedRotatedRT).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	logoutBody, _ := json.Marshal(map[string]string{
+		"refreshToken": refreshResp.Data.RefreshToken,
+	})
+
+	wLogout := httptest.NewRecorder()
+	reqLogout, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/logout", bytes.NewReader(logoutBody))
+	reqLogout.Header.Set("Content-Type", "application/json")
+	reqLogout.Header.Set("Authorization", "Bearer "+refreshResp.Data.AccessToken)
+	r.ServeHTTP(wLogout, reqLogout)
+
+	if wLogout.Code != http.StatusOK {
+		t.Errorf("expected status 200 OK from logout, got %d", wLogout.Code)
 	}
 }
 
@@ -287,4 +400,3 @@ func TestIntegration_ResetPasswordConfirm_And_RecoveryComplete(t *testing.T) {
 		t.Errorf("expected status 200 OK, got %d, body: %s", wComplete.Code, wComplete.Body.String())
 	}
 }
-
