@@ -6,18 +6,20 @@ import (
 	"os"
 	"strings"
 
+	"github.com/deriva-inc/keyper-go/db"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
 type JWTClaims struct {
-	UserID uuid.UUID `json:"user_id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	SessionID *uuid.UUID `json:"session_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
-// AuthMiddleware creates a gin middleware for JWT authentication.
-func AuthRequired() gin.HandlerFunc {
+// AuthRequired creates a gin middleware for JWT and active DB session authentication.
+func AuthRequired(database ...*db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		// 1. Get the Authorization header.
@@ -75,7 +77,31 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// 6. Token is valid! Attach the extracted userId to the Gin context.
+		// 6. Verify that the session has not been revoked in the database when DB is provided.
+		if len(database) > 0 && database[0] != nil {
+			var sessionActive bool
+			var sessionErr error
+			if claims.SessionID != nil {
+				sessionErr = database[0].Get(
+					&sessionActive,
+					"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE id = $1 AND user_id = $2 AND expiry_time > NOW())",
+					*claims.SessionID,
+					claims.UserID,
+				)
+			} else {
+				sessionErr = database[0].Get(
+					&sessionActive,
+					"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE user_id = $1 AND expiry_time > NOW())",
+					claims.UserID,
+				)
+			}
+			if sessionErr != nil || !sessionActive {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session has been revoked or expired"})
+				return
+			}
+		}
+
+		// 7. Token is valid! Attach the extracted userId to the Gin context.
 		//    This makes it available to any subsequent handlers in the chain.
 		c.Set("userId", claims.UserID.String())
 

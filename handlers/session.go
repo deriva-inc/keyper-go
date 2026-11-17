@@ -71,8 +71,8 @@ func RefreshToken(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Generate a new 24-hour access token
-		accessToken, err := GenerateJWT(session.UserID, 24*time.Hour)
+		// Generate a new 24-hour access token bound to this session
+		accessToken, err := GenerateJWT(session.UserID, 24*time.Hour, &session.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token: " + err.Error()})
 			return

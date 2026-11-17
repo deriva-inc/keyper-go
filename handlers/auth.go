@@ -34,7 +34,8 @@ type LoginUserReq struct {
 }
 
 type JWTClaims struct {
-	UserID uuid.UUID `json:"user_id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	SessionID *uuid.UUID `json:"session_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -77,14 +78,20 @@ func GenerateRecoveryKey() (string, error) {
 	return strings.Join(keyParts, "-"), nil
 }
 
-// GenerateJWT creates a new signed JWT for a given user ID.
+// GenerateJWT creates a new signed JWT for a given user ID and optional session ID.
 // The JWT secret should be stored securely in environment variables.
-func GenerateJWT(userID uuid.UUID, expiryTime time.Duration) (string, error) {
+func GenerateJWT(userID uuid.UUID, expiryTime time.Duration, sessionID ...*uuid.UUID) (string, error) {
 	expirationTime := time.Now().Add(expiryTime)
+
+	var sid *uuid.UUID
+	if len(sessionID) > 0 {
+		sid = sessionID[0]
+	}
 
 	// Create the JWT claim.
 	claims := &JWTClaims{
-		UserID: userID,
+		UserID:    userID,
+		SessionID: sid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -205,8 +212,10 @@ func Login(database *db.DB) gin.HandlerFunc {
 			}
 		}
 
+		sessionID := uuid.New()
+
 		// Generate JWT for the session (access token always 24h).
-		accessToken, jwtErr := GenerateJWT(existingUser.ID, 24*time.Hour)
+		accessToken, jwtErr := GenerateJWT(existingUser.ID, 24*time.Hour, &sessionID)
 		if jwtErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token: " + jwtErr.Error()})
 			return
@@ -246,10 +255,10 @@ func Login(database *db.DB) gin.HandlerFunc {
 		}
 
 		insertSessionQuery := `
-			INSERT INTO user_sessions (user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
-			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`
+			INSERT INTO user_sessions (id, user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`
 		hashedRefreshToken := HashRefreshToken(refreshToken)
-		_, err = database.Exec(insertSessionQuery, existingUser.ID, hashedRefreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
+		_, err = database.Exec(insertSessionQuery, sessionID, existingUser.ID, hashedRefreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session: " + err.Error()})
 			return

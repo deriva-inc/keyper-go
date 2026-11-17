@@ -124,7 +124,7 @@ func TestLogin_WithRememberMe_CreatesSession(t *testing.T) {
 			AddRow(userID, email, string(hashedKey), "Test User", time.Now(), time.Now()))
 
 	mock.ExpectExec("INSERT INTO user_sessions").
-		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), "Chrome", "macOS", "Apple").
+		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg(), "Chrome", "macOS", "Apple").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	body, _ := json.Marshal(map[string]interface{}{

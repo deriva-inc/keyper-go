@@ -39,7 +39,7 @@ func SetupRoutes(r *gin.Engine, dbIns *db.DB) {
 
 		// SECTION: Authenticated Routes
 		authRequired := v1.Group("/")
-		authRequired.Use(middleware.AuthRequired())
+		authRequired.Use(middleware.AuthRequired(dbIns))
 		{
 			// Auth actions requiring active JWT
 			authRequired.POST("/auth/logout", handlers.Logout(dbIns))
