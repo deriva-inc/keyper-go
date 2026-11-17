@@ -212,45 +212,47 @@ func Login(database *db.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Handle session & refresh token if rememberMe is requested
+		// Handle session & refresh token
 		var refreshToken string
 		var sessionExpiry *time.Time
 
+		var expiry time.Time
 		if input.RememberMe {
-			rt, err := GenerateRefreshToken()
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token: " + err.Error()})
-				return
-			}
-			refreshToken = rt
+			expiry = time.Now().Add(7 * 24 * time.Hour)
+		} else {
+			expiry = time.Now().Add(24 * time.Hour)
+		}
+		sessionExpiry = &expiry
 
-			// Session duration is 7 days when rememberMe is true
-			expiry := time.Now().Add(7 * 24 * time.Hour)
-			sessionExpiry = &expiry
+		rt, err := GenerateRefreshToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token: " + err.Error()})
+			return
+		}
+		refreshToken = rt
 
-			// Determine device info: use provided deviceInfo or parse User-Agent
-			devInfo := ParseUserAgent(c.GetHeader("User-Agent"))
-			if input.DeviceInfo != nil {
-				if input.DeviceInfo.Browser != nil && *input.DeviceInfo.Browser != "" {
-					devInfo.Browser = input.DeviceInfo.Browser
-				}
-				if input.DeviceInfo.OS != nil && *input.DeviceInfo.OS != "" {
-					devInfo.OS = input.DeviceInfo.OS
-				}
-				if input.DeviceInfo.Manufacturer != nil && *input.DeviceInfo.Manufacturer != "" {
-					devInfo.Manufacturer = input.DeviceInfo.Manufacturer
-				}
+		// Determine device info: use provided deviceInfo or parse User-Agent
+		devInfo := ParseUserAgent(c.GetHeader("User-Agent"))
+		if input.DeviceInfo != nil {
+			if input.DeviceInfo.Browser != nil && *input.DeviceInfo.Browser != "" {
+				devInfo.Browser = input.DeviceInfo.Browser
 			}
+			if input.DeviceInfo.OS != nil && *input.DeviceInfo.OS != "" {
+				devInfo.OS = input.DeviceInfo.OS
+			}
+			if input.DeviceInfo.Manufacturer != nil && *input.DeviceInfo.Manufacturer != "" {
+				devInfo.Manufacturer = input.DeviceInfo.Manufacturer
+			}
+		}
 
-			insertSessionQuery := `
-				INSERT INTO user_sessions (user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
-				VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`
-			hashedRefreshToken := HashRefreshToken(refreshToken)
-			_, err = database.Exec(insertSessionQuery, existingUser.ID, hashedRefreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session: " + err.Error()})
-				return
-			}
+		insertSessionQuery := `
+			INSERT INTO user_sessions (user_id, refresh_token, expiry_time, browser, os, manufacturer, creation_time, last_active)
+			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`
+		hashedRefreshToken := HashRefreshToken(refreshToken)
+		_, err = database.Exec(insertSessionQuery, existingUser.ID, hashedRefreshToken, expiry, devInfo.Browser, devInfo.OS, devInfo.Manufacturer)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session: " + err.Error()})
+			return
 		}
 
 		userResponse := gin.H{
@@ -265,10 +267,10 @@ func Login(database *db.DB) gin.HandlerFunc {
 		responseData := gin.H{
 			"accessToken": accessToken,
 			"user":        userResponse,
+			"expiryTime":  sessionExpiry,
 		}
-		if refreshToken != "" {
+		if input.RememberMe {
 			responseData["refreshToken"] = refreshToken
-			responseData["expiryTime"] = sessionExpiry
 		}
 
 		// return success reponse

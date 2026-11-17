@@ -139,6 +139,10 @@ func TestE2E_FullUserSignupAndLoginJourney(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "auth_key", "name", "created_at", "updated_at"}).
 			AddRow(userID, email, string(hashedKey), "E2E User", time.Now(), time.Now()))
 
+	mock.ExpectExec("INSERT INTO user_sessions").
+		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
 	loginPayload, _ := json.Marshal(map[string]string{
 		"email":   email,
 		"authKey": rawAuthKey,
@@ -291,6 +295,10 @@ func TestE2E_FullAccountRecoveryJourney(t *testing.T) {
 		WithArgs(email).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "auth_key", "name", "created_at", "updated_at"}).
 			AddRow(userID, email, string(newHashedAuthKey), "Recover User", time.Now(), time.Now()))
+
+	mock.ExpectExec("INSERT INTO user_sessions").
+		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	loginBody, _ := json.Marshal(map[string]string{
 		"email":   email,

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/deriva-inc/keyper-go/db"
+	"github.com/deriva-inc/keyper-go/middleware"
 	"github.com/deriva-inc/keyper-go/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // GenerateRefreshToken generates a secure random 32-byte hex string (64 characters).
@@ -107,7 +107,7 @@ func RefreshToken(database *db.DB) gin.HandlerFunc {
 	}
 }
 
-// Logout invalidates a user's single session/device by removing its refresh token.
+// Logout invalidates a user's single session/device.
 // POST /api/v1/auth/logout
 func Logout(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -117,6 +117,12 @@ func Logout(database *db.DB) gin.HandlerFunc {
 		if input.RefreshToken != "" {
 			hashedToken := HashRefreshToken(input.RefreshToken)
 			_, _ = database.Exec("DELETE FROM user_sessions WHERE refresh_token = $1", hashedToken)
+		} else {
+			// If no refresh token provided, check if an authenticated Bearer token is present
+			if userID, err := middleware.GetUserIDFromContext(c); err == nil {
+				// Delete oldest/most relevant session for this user
+				_, _ = database.Exec("DELETE FROM user_sessions WHERE id IN (SELECT id FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC LIMIT 1)", userID)
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -129,19 +135,13 @@ func Logout(database *db.DB) gin.HandlerFunc {
 // POST /api/v1/auth/logout-all
 func RevokeAllSessions(database *db.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userIDVal, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		userID, err := middleware.GetUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()})
 			return
 		}
 
-		userID, ok := userIDVal.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
-			return
-		}
-
-		_, err := database.Exec("DELETE FROM user_sessions WHERE user_id = $1", userID)
+		_, err = database.Exec("DELETE FROM user_sessions WHERE user_id = $1", userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke sessions: " + err.Error()})
 			return

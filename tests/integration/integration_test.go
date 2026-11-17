@@ -114,6 +114,10 @@ func TestIntegration_UserLogin_Success(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "auth_key", "name", "created_at", "updated_at"}).
 			AddRow(userID, email, string(hashedKey), "Login User", time.Now(), time.Now()))
 
+	mock.ExpectExec("INSERT INTO user_sessions").
+		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
 	body, _ := json.Marshal(map[string]string{
 		"email":   email,
 		"authKey": rawPasswordKey,
@@ -255,6 +259,7 @@ func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T
 	wLogout := httptest.NewRecorder()
 	reqLogout, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/logout", bytes.NewReader(logoutBody))
 	reqLogout.Header.Set("Content-Type", "application/json")
+	reqLogout.Header.Set("Authorization", "Bearer "+refreshResp.Data.AccessToken)
 	r.ServeHTTP(wLogout, reqLogout)
 
 	if wLogout.Code != http.StatusOK {

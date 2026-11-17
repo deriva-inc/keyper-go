@@ -269,12 +269,34 @@ func TestLogout_Success(t *testing.T) {
 	}
 }
 
+func TestLogout_BearerToken_Success(t *testing.T) {
+	r, database, mock := setupSessionTestRouter(t)
+	userID := uuid.New()
+
+	r.POST("/logout", func(c *gin.Context) {
+		c.Set("userId", userID.String())
+		Logout(database)(c)
+	})
+
+	mock.ExpectExec("DELETE FROM user_sessions WHERE id IN \\(SELECT id FROM user_sessions WHERE user_id = \\$1 ORDER BY last_active DESC LIMIT 1\\)").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/logout", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
 func TestRevokeAllSessions_Success(t *testing.T) {
 	r, database, mock := setupSessionTestRouter(t)
 	userID := uuid.New()
 
 	r.POST("/logout-all", func(c *gin.Context) {
-		c.Set("userID", userID)
+		c.Set("userId", userID.String())
 		RevokeAllSessions(database)(c)
 	})
 
