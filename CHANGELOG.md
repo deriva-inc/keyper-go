@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.41.2] - 2026-11-17
+
+---
+
+#### Updated
+
+- Fix test cases for JWT claims support for session ID.
+
 ### [0.41.1] - 2026-11-17
 
 ---

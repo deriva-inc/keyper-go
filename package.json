@@ -1,6 +1,6 @@
 {
   "name": "keyper-go",
-  "version": "0.41.1",
+  "version": "0.41.2",
   "description": "Zero-knowledge credentials and password vault backend in Go.",
   "scripts": {
     "check": "./scripts/verify-local.sh",
