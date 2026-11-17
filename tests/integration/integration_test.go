@@ -115,7 +115,7 @@ func TestIntegration_UserLogin_Success(t *testing.T) {
 			AddRow(userID, email, string(hashedKey), "Login User", time.Now(), time.Now()))
 
 	mock.ExpectExec("INSERT INTO user_sessions").
-		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	body, _ := json.Marshal(map[string]string{
@@ -176,7 +176,7 @@ func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T
 			AddRow(userID, email, string(hashedKey), "Remember User", time.Now(), time.Now()))
 
 	mock.ExpectExec("INSERT INTO user_sessions").
-		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), "Chrome", "macOS", "Apple").
+		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg(), "Chrome", "macOS", "Apple").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	loginBody, _ := json.Marshal(map[string]interface{}{
@@ -247,6 +247,10 @@ func TestIntegration_UserLogin_WithRememberMe_And_RefreshToken_Flow(t *testing.T
 	}
 
 	// 3. Logout flow
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM user_sessions WHERE id = \\$1 AND user_id = \\$2 AND expiry_time > NOW\\(\\)\\)").
+		WithArgs(sessionID, userID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 	hashedRotatedRT := handlers.HashRefreshToken(refreshResp.Data.RefreshToken)
 	mock.ExpectExec("DELETE FROM user_sessions WHERE refresh_token = \\$1").
 		WithArgs(hashedRotatedRT).

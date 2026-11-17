@@ -140,7 +140,7 @@ func TestE2E_FullUserSignupAndLoginJourney(t *testing.T) {
 			AddRow(userID, email, string(hashedKey), "E2E User", time.Now(), time.Now()))
 
 	mock.ExpectExec("INSERT INTO user_sessions").
-		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	loginPayload, _ := json.Marshal(map[string]string{
@@ -169,6 +169,10 @@ func TestE2E_FullUserSignupAndLoginJourney(t *testing.T) {
 	}
 
 	// 4. Access Protected Route (GET /api/v1/users/)
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM user_sessions WHERE id = \\$1 AND user_id = \\$2 AND expiry_time > NOW\\(\\)\\)").
+		WithArgs(sqlmock.AnyArg(), userID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 	mock.ExpectQuery("SELECT (.+) FROM users WHERE id = \\$1").
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "avatar_url", "created_at", "updated_at"}).
@@ -297,7 +301,7 @@ func TestE2E_FullAccountRecoveryJourney(t *testing.T) {
 			AddRow(userID, email, string(newHashedAuthKey), "Recover User", time.Now(), time.Now()))
 
 	mock.ExpectExec("INSERT INTO user_sessions").
-		WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	loginBody, _ := json.Marshal(map[string]string{
@@ -328,6 +332,10 @@ func TestE2E_VaultEntryLifecycleJourney(t *testing.T) {
 	token, _ := middlewareGenerateTestToken(userID, "e2e-vault-secret-key-1234567890")
 
 	// 1. Create Profile
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM user_sessions WHERE user_id = \\$1 AND expiry_time > NOW\\(\\)\\)").
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 	mock.ExpectQuery("INSERT INTO profiles").
 		WithArgs(userID, "Work Profile", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "name", "is_archived", "created_at", "updated_at"}).
@@ -347,6 +355,10 @@ func TestE2E_VaultEntryLifecycleJourney(t *testing.T) {
 	}
 
 	// 2. Create Entry
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM user_sessions WHERE user_id = \\$1 AND expiry_time > NOW\\(\\)\\)").
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM profiles WHERE id = \\$1 AND user_id = \\$2").
 		WithArgs(profileID, userID).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
@@ -374,6 +386,10 @@ func TestE2E_VaultEntryLifecycleJourney(t *testing.T) {
 	}
 
 	// 3. Delete Entry
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM user_sessions WHERE user_id = \\$1 AND expiry_time > NOW\\(\\)\\)").
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 	mock.ExpectExec("DELETE FROM vault_entries e USING profiles p WHERE e.id = \\$1 AND e.profile_id = p.id AND p.user_id = \\$2").
 		WithArgs(entryID.String(), userID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
