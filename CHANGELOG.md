@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.40.0] - 2026-11-17
+
+---
+
+#### Added
+
+- Add refresh token and session management.
+
 ### [0.39.1] - 2026-11-14
 
 ---
