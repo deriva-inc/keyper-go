@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### [0.41.1] - 2026-11-17
+
+---
+
+#### Updated
+
+- JWT claims now support session ID to manage orphan sessions and better session management.
+
 ### [0.41.0] - 2026-11-17
 
 ---
